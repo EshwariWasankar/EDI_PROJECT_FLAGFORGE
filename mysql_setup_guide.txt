@@ -1,0 +1,52 @@
+# MySQL Setup Guide for Feature Flag Management System
+
+This guide will help you set up a MySQL database for the project. You can choose to run it via Docker (Recommended, easiest) or install it natively on your machine.
+
+## Option 1: Using Docker (Recommended)
+
+If you have Docker Desktop installed, this is the fastest way to get MySQL running without installing it directly on your system.
+
+1. Open a terminal or command prompt.
+2. Run the following command to start a MySQL container:
+   ```bash
+   docker run --name flagforge-mysql -e MYSQL_ROOT_PASSWORD=rootpassword -e MYSQL_DATABASE=flagforge -e MYSQL_USER=flag_user -e MYSQL_PASSWORD=flag_password -p 3306:3306 -d mysql:8.0
+   ```
+   *This command downloads MySQL 8.0, sets up a database called `flagforge`, creates a user `flag_user` with password `flag_password`, and maps it to your machine's default MySQL port (3306).*
+
+3. Your database is now running! You can proceed to run the backend.
+
+## Option 2: Native Installation (Windows/macOS)
+
+If you prefer to install MySQL directly:
+
+1. Download the MySQL Community Server installer from [dev.mysql.com/downloads/mysql](https://dev.mysql.com/downloads/mysql/).
+2. Run the installer. During setup:
+   - Choose a "Developer Default" or "Server Only" setup.
+   - When asked for a Root Password, set one you will remember (e.g., `rootpassword`).
+   - Leave the port at the default `3306`.
+3. Once installed, open the **MySQL Command Line Client** (or MySQL Workbench) and run the following SQL commands to create the database and user:
+   ```sql
+   CREATE DATABASE flagforge;
+   CREATE USER 'flag_user'@'%' IDENTIFIED BY 'flag_password';
+   GRANT ALL PRIVILEGES ON flagforge.* TO 'flag_user'@'%';
+   FLUSH PRIVILEGES;
+   ```
+
+## Environment Variables for the Backend
+
+Whichever method you choose, you will need to set the following environment variables for the Python backend. The backend will look for a `.env` file in the `backend/` directory.
+
+We will create a `.env` file for you with the following defaults (which match the Docker setup above):
+
+```env
+DB_HOST=127.0.0.0
+DB_USER=flag_user
+DB_PASSWORD=flag_password
+DB_NAME=flagforge
+```
+
+## Running the Schema Script
+
+Once the database is running, the backend will need the initial tables created. We will provide a `db_schema.sql` file. You can apply it by:
+- **Docker**: `docker exec -i flagforge-mysql mysql -u flag_user -pflag_password flagforge < backend/db_schema.sql`
+- **Native**: Using MySQL Workbench to open and execute the script, or via CLI: `mysql -u flag_user -p flagforge < backend/db_schema.sql`
