@@ -226,6 +226,24 @@ def get_dashboard_data():
             cursor.execute("SELECT COUNT(*) as failed FROM analytics WHERE usage_status = 'failed'")
             failed_events = cursor.fetchone()['failed']
 
+            # Success Rate Calculation
+            success_rate = round(((total_events - failed_events) / total_events * 100), 1) if total_events > 0 else 0
+
+            # Most Used Feature
+            cursor.execute('''
+                SELECT feature_name, COUNT(*) as usage_count 
+                FROM analytics 
+                GROUP BY feature_name 
+                ORDER BY usage_count DESC LIMIT 1
+            ''')
+            most_used_data = cursor.fetchone()
+            most_used_feature = most_used_data['feature_name'] if most_used_data else "None"
+
+            # Average Feature Usage per Active User
+            cursor.execute("SELECT COUNT(DISTINCT device_id) as active_total FROM analytics")
+            unique_active = cursor.fetchone()['active_total']
+            avg_usage = round(total_events / unique_active, 1) if unique_active > 0 else 0
+
             # Feature History (Last 5)
             cursor.execute('''
                 SELECT feature_name, is_enabled, rollout_percentage, changed_at
@@ -247,14 +265,14 @@ def get_dashboard_data():
                 l['timestamp'] = l['timestamp'].isoformat() if l['timestamp'] else None
 
             # Rollout Intelligence: sample 5 devices and simulate their rollout
-            sample_devices = devices[:5] if devices else []
+            sample_devices = devices[:10] if devices else []
             intelligence = []
             for d in sample_devices:
                 for f in features:
                     hash_val = mmh3.hash(d['device_id'], seed=42)
                     normalized_hash = abs(hash_val) % 100
                     
-                    is_eligible = normalized_hash < f['rollout_percentage']
+                    is_eligible = normalized_hash < int(f['rollout_percentage'])
                     if f['rollout_percentage'] >= 100:
                         is_eligible = True
                     elif f['rollout_percentage'] <= 0:
@@ -272,6 +290,19 @@ def get_dashboard_data():
                         'rollout_percentage': f['rollout_percentage'],
                         'is_enabled': is_enabled_final
                     })
+
+            # Adoption Rate (Users per feature)
+            cursor.execute("SELECT COUNT(*) as total_devices FROM devices")
+            total_devices_count = cursor.fetchone()['total_devices']
+
+            cursor.execute('''
+                SELECT feature_name, COUNT(DISTINCT device_id) as unique_users 
+                FROM analytics 
+                GROUP BY feature_name
+            ''')
+            adoption = cursor.fetchall()
+            for a in adoption:
+                a['adoption_percentage'] = round((a['unique_users'] / total_devices_count * 100), 1) if total_devices_count > 0 else 0
             
         return jsonify({
             "features": features,
@@ -283,7 +314,12 @@ def get_dashboard_data():
             "failed_events": failed_events,
             "history": history,
             "live_feed": live_feed,
-            "intelligence": intelligence
+            "intelligence": intelligence,
+            "success_rate": success_rate,
+            "most_used_feature": most_used_feature,
+            "adoption": adoption,
+            "avg_usage": avg_usage,
+            "total_devices_count": total_devices_count
         })
     finally:
         conn.close()

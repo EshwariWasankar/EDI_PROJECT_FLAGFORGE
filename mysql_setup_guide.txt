@@ -39,7 +39,7 @@ Whichever method you choose, you will need to set the following environment vari
 We will create a `.env` file for you with the following defaults (which match the Docker setup above):
 
 ```env
-DB_HOST=127.0.0.0
+DB_HOST=127.0.0.1
 DB_USER=flag_user
 DB_PASSWORD=flag_password
 DB_NAME=flagforge

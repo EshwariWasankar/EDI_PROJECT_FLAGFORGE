@@ -29,9 +29,16 @@ def start_simulator():
     print("Starting background simulator...")
     time.sleep(2) # Give main app a moment to start
     
-    # Generate 200 realistic-looking mock device IDs
-    sim_users = [f"device_sim_{str(i).zfill(3)}_{random.randint(1000,9999)}" for i in range(1, 201)]
+    # Generate 250 realistic-looking mock device IDs
+    sim_users = [f"device_sim_{str(i).zfill(3)}_{random.randint(1000,9999)}" for i in range(1, 251)]
     features = ['new_transfer_ui', 'biometric_login', 'spending_analytics']
+    
+    # Define user types for more realistic traffic
+    # 10% Heavy Users, 60% Normal, 20% Occasional, 10% Inactive
+    heavy_users = sim_users[:25]
+    normal_users = sim_users[25:175]
+    occasional_users = sim_users[175:225]
+    inactive_users = sim_users[225:]
     
     # Register devices on startup
     try:
@@ -48,6 +55,13 @@ def start_simulator():
     except Exception as e:
         print(f"Simulator init error: {e}")
 
+    # Feature specific health (to make analytics interesting)
+    feature_failure_rates = {
+        'new_transfer_ui': 0.05,
+        'biometric_login': 0.02,
+        'spending_analytics': 0.12  # Simulate a "buggy" rollout
+    }
+
     while True:
         try:
             conn = get_db_connection()
@@ -59,14 +73,21 @@ def start_simulator():
             flag_map = {f['feature_name']: f for f in flags}
             
             # Simulate 15-40 actions every loop to create varied traffic
-            num_actions = random.randint(15, 40)
+            num_actions = random.randint(20, 60)
             
             for _ in range(num_actions):
-                # Introduce some heavy users by tweaking random choice
-                user_id = random.choice(sim_users)
+                # Weighted choice for user activity
+                rand = random.random()
+                if rand < 0.5: # Heavy users provide 50% of traffic
+                    user_id = random.choice(heavy_users)
+                elif rand < 0.9: # Normal users 40%
+                    user_id = random.choice(normal_users)
+                else: # Occasional users 10%
+                    user_id = random.choice(occasional_users)
+
                 feature = random.choice(features)
-                
                 f_data = flag_map.get(feature)
+
                 if f_data:
                     is_enabled = is_feature_enabled_for_device(
                         user_id, 
@@ -75,8 +96,8 @@ def start_simulator():
                     )
                     
                     if is_enabled:
-                        # 90% success rate, 10% failure to make charts interesting
-                        usage_status = 'used' if random.random() < 0.9 else 'failed'
+                        # Use feature-specific failure rates
+                        usage_status = 'used' if random.random() > feature_failure_rates.get(feature, 0.05) else 'failed'
                         
                         # Sometimes simulate events slightly in the past to make graphs less spiky
                         seconds_offset = random.randint(0, 4)
@@ -94,4 +115,3 @@ def start_simulator():
             
         # Poll every 2 to 4 seconds for lively UI
         time.sleep(random.uniform(2.0, 4.0))
-
