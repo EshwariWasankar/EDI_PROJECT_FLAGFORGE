@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 // --- Configuration ---
-const String backendUrl = "http://192.168.0.125:5000"; // Use your local IP
+const String backendUrl = "http://192.168.0.125:5000"; // TODO: Move to a config file
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -70,10 +70,18 @@ Follow these steps to get FlagForge up and running on your local machine.
 
 ### 1. Database Setup (MySQL)
 
-You can choose between Docker (recommended) or a native MySQL installation.
+You can choose between the Docker Compose "Quick Start", manual Docker, or a native MySQL installation.
 
-#### Option A: Using Docker (Recommended)
+#### Option A: Docker Compose (Quickest Start)
+If you want to get the Backend and Database running with a single command:
+1. Open your terminal in the project root (`d:\EDI_FLAGFORGE`).
+2. Run:
+   ```bash
+   docker-compose up --build
+   ```
+   *This automatically starts MySQL, applies the schema, and starts the Flask API. If you use this, you can skip to **Step 3: Frontend Setup**.*
 
+#### Option B: Manual Docker (Database Only)
 1.  Open your terminal in the project root (`d:\EDI_FLAGFORGE`).
 2.  Run the following command to start a MySQL 8.0 container:
     ```bash
@@ -85,7 +93,7 @@ You can choose between Docker (recommended) or a native MySQL installation.
     ```
     *(Replace `backend/db_schema.sql` with the actual path to your schema file if it's different).*
 
-#### Option B: Native MySQL Installation
+#### Option C: Native MySQL Installation
 
 1.  Install MySQL Server (version 8.0+ recommended) on your system.
 2.  Log into your MySQL instance (e.g., via MySQL Workbench or CLI).
@@ -103,6 +111,8 @@ You can choose between Docker (recommended) or a native MySQL installation.
     *(Replace `backend/db_schema.sql` with the actual path to your schema file if it's different).*
 
 ### 2. Backend Setup (Flask)
+
+*Note: Skip this step if you used **Option A (Docker Compose)**.*
 
 1.  Navigate to the `backend` directory:
     ```bash
