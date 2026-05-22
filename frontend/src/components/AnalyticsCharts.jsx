@@ -27,7 +27,15 @@ ChartJS.register(
   Filler
 );
 
-function AnalyticsCharts({ analytics, timeline, features }) {
+function AnalyticsCharts({
+  analytics,
+  timeline,
+  features,
+  ruleMatchAnalytics = [],
+  geospatialAdoption = [],
+  deviceDistribution = [],
+  ageCohortSaturation = []
+}) {
   if (!features || features.length === 0) return null;
 
   // Global Chart Options
@@ -38,7 +46,7 @@ function AnalyticsCharts({ analytics, timeline, features }) {
       legend: {
         labels: {
           color: '#94A3B8',
-          font: { family: "'Inter', sans-serif", size: 12 }
+          font: { family: "'Inter', sans-serif", size: 11 }
         }
       },
       tooltip: {
@@ -54,11 +62,11 @@ function AnalyticsCharts({ analytics, timeline, features }) {
     scales: {
       x: { 
         ticks: { color: '#64748B' }, 
-        grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false } 
+        grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false } 
       },
       y: { 
         ticks: { color: '#64748B' }, 
-        grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false } 
+        grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false } 
       }
     }
   };
@@ -150,9 +158,117 @@ function AnalyticsCharts({ analytics, timeline, features }) {
     datasets: lineDatasets
   };
 
+  // 4. Targeting Rules Activation (Doughnut)
+  const ruleLabels = ruleMatchAnalytics.map(r => r.matched_rule_id === 'default' ? 'Global Default' : r.matched_rule_id);
+  const ruleCounts = ruleMatchAnalytics.map(r => r.count);
+  const ruleDoughnutData = {
+    labels: ruleLabels.length > 0 ? ruleLabels : ['No Rules Evaluated'],
+    datasets: [
+      {
+        data: ruleCounts.length > 0 ? ruleCounts : [1],
+        backgroundColor: ruleCounts.length > 0 ? [
+          'rgba(139, 92, 246, 0.85)', // Purple
+          'rgba(20, 184, 166, 0.85)', // Teal
+          'rgba(59, 130, 246, 0.85)', // Blue
+          'rgba(245, 158, 11, 0.85)', // Amber
+          'rgba(16, 185, 129, 0.85)', // Emerald
+          'rgba(71, 85, 105, 0.8)'    // Dark slate
+        ] : ['rgba(30, 41, 59, 0.4)'],
+        borderWidth: 0,
+        hoverOffset: 4
+      }
+    ]
+  };
+
+  // 5. Geospatial Adoption Rate (Horizontal Bar)
+  const geoLabels = geospatialAdoption.map(g => g.location || 'Unknown');
+  const geoCounts = geospatialAdoption.map(g => g.count);
+  const geoBarData = {
+    labels: geoLabels.length > 0 ? geoLabels : ['No Data'],
+    datasets: [
+      {
+        label: 'Success Evaluations',
+        data: geoCounts.length > 0 ? geoCounts : [0],
+        backgroundColor: 'rgba(20, 184, 166, 0.8)',
+        borderRadius: 4
+      }
+    ]
+  };
+  const geoOptions = {
+    ...commonOptions,
+    indexAxis: 'y',
+    plugins: {
+      ...commonOptions.plugins,
+      legend: { display: false }
+    }
+  };
+
+  // 6. Device Distribution Efficiency (Doughnut)
+  const devLabels = deviceDistribution.map(d => d.device_type || 'Unknown');
+  const devCounts = deviceDistribution.map(d => d.count);
+  const getDeviceColor = (type) => {
+    if (type === 'iOS') return 'rgba(139, 92, 246, 0.8)';
+    if (type === 'Android') return 'rgba(16, 185, 129, 0.8)';
+    if (type === 'Web') return 'rgba(59, 130, 246, 0.8)';
+    return 'rgba(100, 116, 139, 0.8)';
+  };
+  const devDoughnutData = {
+    labels: devLabels.length > 0 ? devLabels : ['No Data'],
+    datasets: [
+      {
+        data: devCounts.length > 0 ? devCounts : [1],
+        backgroundColor: devLabels.length > 0 ? devLabels.map(getDeviceColor) : ['rgba(30, 41, 59, 0.4)'],
+        borderWidth: 0,
+        hoverOffset: 4
+      }
+    ]
+  };
+
+  // 7. Age Cohort Saturation (Bar)
+  const cohortsOrder = ['Under 18', '18-25', '26-45', '46+'];
+  const cohortAverages = cohortsOrder.map(c => {
+    const item = ageCohortSaturation.find(d => d.cohort === c);
+    return item ? item.activation_ratio : 0;
+  });
+  const ageBarData = {
+    labels: cohortsOrder,
+    datasets: [
+      {
+        label: 'Activation Ratio (%)',
+        data: cohortAverages,
+        backgroundColor: 'rgba(139, 92, 246, 0.8)',
+        borderRadius: 4
+      }
+    ]
+  };
+  const ageOptions = {
+    ...commonOptions,
+    plugins: {
+      ...commonOptions.plugins,
+      legend: { display: false }
+    },
+    scales: {
+      ...commonOptions.scales,
+      y: {
+        ...commonOptions.scales.y,
+        min: 0,
+        max: 100,
+        ticks: {
+          ...commonOptions.scales.y.ticks,
+          callback: (value) => `${value}%`
+        }
+      }
+    }
+  };
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
       
+      {/* SECTION 1: SYSTEM TELEMETRY */}
+      <div style={{ gridColumn: '1 / -1', marginBottom: '-0.5rem' }}>
+        <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--accent-brand)', margin: 0, fontWeight: 600 }}>System Telemetry</h4>
+      </div>
+
       <div style={{ height: '280px', position: 'relative' }}>
         <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Usage & Failure Events</h3>
         <Bar data={barData} options={barOptions} />
@@ -168,6 +284,39 @@ function AnalyticsCharts({ analytics, timeline, features }) {
       <div style={{ height: '280px', position: 'relative', gridColumn: '1 / -1' }}>
         <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Real-Time Activity Timeline (10m)</h3>
         <Line data={lineData} options={commonOptions} />
+      </div>
+
+      {/* SECTION 2: DEMOGRAPHIC & RULE TARGETING INTELLIGENCE */}
+      <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--glass-border)', paddingTop: '2rem', marginTop: '1rem', marginBottom: '-0.5rem' }}>
+        <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--accent-purple)', margin: 0, fontWeight: 600 }}>Targeting & Demographic Intelligence</h4>
+      </div>
+
+      {/* Rule Match Doughnut */}
+      <div style={{ height: '280px', position: 'relative' }}>
+        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Targeting Rule Matches</h3>
+        <div style={{ height: '240px' }}>
+          <Doughnut data={ruleDoughnutData} options={{...noScaleOptions, cutout: '75%'}} />
+        </div>
+      </div>
+
+      {/* Device Distribution Doughnut */}
+      <div style={{ height: '280px', position: 'relative' }}>
+        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Device Type Efficiency</h3>
+        <div style={{ height: '240px' }}>
+          <Doughnut data={devDoughnutData} options={{...noScaleOptions, cutout: '75%'}} />
+        </div>
+      </div>
+
+      {/* Geospatial Adoption Bar */}
+      <div style={{ height: '280px', position: 'relative' }}>
+        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Geospatial Adoption Rate</h3>
+        <Bar data={geoBarData} options={geoOptions} />
+      </div>
+
+      {/* Age Cohort Saturation Bar */}
+      <div style={{ height: '280px', position: 'relative' }}>
+        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Age Cohort Saturation</h3>
+        <Bar data={ageBarData} options={ageOptions} />
       </div>
       
     </div>

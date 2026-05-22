@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
@@ -39,12 +41,16 @@ class FlagForgeApp extends StatelessWidget {
 // --- State Management ---
 class FeatureProvider extends ChangeNotifier {
   String deviceId = "";
+  int age = 22;
+  String gender = 'male';
+  String location = 'IN';
+  String environment = 'production';
+
   Map<String, bool> features = {
     'new_transfer_ui': false,
     'biometric_login': false,
     'spending_analytics': false,
     'card_tab': false,
-    'cards_tab': false,
   };
   Timer? _timer;
 
@@ -52,10 +58,29 @@ class FeatureProvider extends ChangeNotifier {
     _initDevice();
   }
 
+  String getDeviceType() {
+    if (kIsWeb) return "Desktop";
+    try {
+      if (Platform.isIOS) return "iOS";
+      if (Platform.isAndroid) return "Android";
+      if (Platform.isMacOS) return "macOS";
+      if (Platform.isWindows) return "Windows";
+      if (Platform.isLinux) return "Linux";
+    } catch (e) {
+      return "Desktop";
+    }
+    return "Desktop";
+  }
+
   Future<void> _initDevice() async {
     final prefs = await SharedPreferences.getInstance();
     deviceId = prefs.getString('device_id') ?? "dev_${DateTime.now().millisecondsSinceEpoch}";
     await prefs.setString('device_id', deviceId);
+    
+    age = prefs.getInt('user_age') ?? 22;
+    gender = prefs.getString('user_gender') ?? 'male';
+    location = prefs.getString('user_location') ?? 'IN';
+    environment = prefs.getString('user_environment') ?? 'production';
     
     await _register();
     _startPolling();
@@ -80,16 +105,56 @@ class FeatureProvider extends ChangeNotifier {
 
   Future<void> fetchFeatures() async {
     try {
-      final response = await http.get(Uri.parse('$backendUrl/get-features?device_id=$deviceId'));
+      final Map<String, dynamic> payload = {
+        "device_id": deviceId,
+        "environment": environment,
+        "attributes": {
+          "age": age,
+          "device_type": getDeviceType(),
+          "gender": gender,
+          "location": location,
+        }
+      };
+
+      final response = await http.post(
+        Uri.parse('$backendUrl/evaluate-features'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         features = data.map((key, value) => MapEntry(key, value as bool));
         debugPrint("Features updated: $features");
         notifyListeners();
+      } else {
+        debugPrint("Failed to fetch features: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
       debugPrint("Polling error: $e");
     }
+  }
+
+  Future<void> updateProfile({int? newAge, String? newGender, String? newLocation, String? newEnvironment}) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (newAge != null) {
+      age = newAge;
+      await prefs.setInt('user_age', age);
+    }
+    if (newGender != null) {
+      gender = newGender;
+      await prefs.setString('user_gender', gender);
+    }
+    if (newLocation != null) {
+      location = newLocation;
+      await prefs.setString('user_location', location);
+    }
+    if (newEnvironment != null) {
+      environment = newEnvironment;
+      await prefs.setString('user_environment', environment);
+    }
+    notifyListeners();
+    await fetchFeatures();
   }
 
   Future<void> logUsage(String feature) async {
@@ -104,7 +169,7 @@ class FeatureProvider extends ChangeNotifier {
         }),
       );
     } catch (e) {
-	  debugPrint("Logging error: $e");
+      debugPrint("Logging error: $e");
     }
   }
 
@@ -142,8 +207,8 @@ class _MainNavigationState extends State<MainNavigation> {
           const BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: "Home"),
         ];
 
-        // Check card_tab or cards_tab feature flag
-        final bool showCardTab = (_provider.features['card_tab'] ?? _provider.features['cards_tab']) ?? false;
+        // Check card_tab feature flag
+        final bool showCardTab = _provider.features['card_tab'] ?? false;
         if (showCardTab) {
           tabs.add(const Center(child: Text("Cards")));
           navItems.add(const BottomNavigationBarItem(icon: Icon(Icons.credit_card), label: "Cards"));
@@ -360,27 +425,231 @@ class AnalyticsScreen extends StatelessWidget {
   }
 }
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   final FeatureProvider provider;
   const SettingsScreen({super.key, required this.provider});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  late TextEditingController _locationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _locationController = TextEditingController(text: widget.provider.location);
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.provider.location != _locationController.text) {
+      _locationController.text = widget.provider.location;
+    }
+  }
+
+  @override
+  void dispose() {
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final provider = widget.provider;
     return Scaffold(
-      appBar: AppBar(title: const Text("Settings")),
+      appBar: AppBar(
+        title: const Text("Settings & Profile"),
+        elevation: 0,
+      ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
-          const ListTile(leading: Icon(Icons.person), title: Text("Profile Information")),
-          const ListTile(leading: Icon(Icons.notifications), title: Text("Notifications")),
+          // Targeting Rules Context Card
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: const Color(0xFF0F172A),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: Colors.cyan.withOpacity(0.3), width: 1),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.psychology_outlined, color: Color(0xFF22D3EE), size: 24),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Targeting Context",
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Adjust these demographic attributes to see matching rules evaluate in real-time.",
+                    style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade300),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(color: Colors.white10),
+                  
+                  // Device Type (Read-only status)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text("Device Type (Auto-detected)", style: TextStyle(color: Colors.white70)),
+                    subtitle: Text(provider.getDeviceType(), style: const TextStyle(color: Color(0xFF22D3EE), fontWeight: FontWeight.bold, fontSize: 15)),
+                    trailing: const Icon(Icons.devices, color: Colors.white38),
+                  ),
+                  const Divider(color: Colors.white10),
+                  
+                  // Age Selector
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text("Age: ${provider.age}", style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w500)),
+                      Text(provider.age >= 18 ? "Adult" : "Minor", style: TextStyle(color: provider.age >= 18 ? Colors.greenAccent : Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  Slider(
+                    value: provider.age.toDouble(),
+                    min: 10,
+                    max: 80,
+                    divisions: 70,
+                    activeColor: const Color(0xFF22D3EE),
+                    inactiveColor: Colors.blueGrey.shade800,
+                    label: provider.age.toString(),
+                    onChanged: (val) {
+                      provider.updateProfile(newAge: val.toInt());
+                    },
+                  ),
+                  const Divider(color: Colors.white10),
+                  
+                  // Gender Dropdown
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Gender", style: TextStyle(color: Colors.white70)),
+                      DropdownButton<String>(
+                        value: provider.gender,
+                        dropdownColor: const Color(0xFF0F172A),
+                        style: const TextStyle(color: Color(0xFF22D3EE), fontWeight: FontWeight.bold),
+                        underline: Container(height: 1, color: Colors.cyan),
+                        items: ['male', 'female', 'other'].map((g) {
+                          return DropdownMenuItem(value: g, child: Text(g.toUpperCase()));
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            provider.updateProfile(newGender: val);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white10),
+                  
+                  // Location Input
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Location (Country ISO)", style: TextStyle(color: Colors.white70)),
+                      SizedBox(
+                        width: 100,
+                        child: TextField(
+                          controller: _locationController,
+                          style: const TextStyle(color: Color(0xFF22D3EE), fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF22D3EE), width: 2)),
+                            hintText: "e.g., IN, US",
+                            hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
+                          ),
+                          onSubmitted: (val) {
+                            provider.updateProfile(newLocation: val.trim().toUpperCase());
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Divider(color: Colors.white10),
+                  
+                  // Environment Dropdown
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Environment", style: TextStyle(color: Colors.white70)),
+                      DropdownButton<String>(
+                        value: provider.environment,
+                        dropdownColor: const Color(0xFF0F172A),
+                        style: const TextStyle(color: Color(0xFF22D3EE), fontWeight: FontWeight.bold),
+                        underline: Container(height: 1, color: Colors.cyan),
+                        items: ['production', 'staging', 'development'].map((env) {
+                          return DropdownMenuItem(value: env, child: Text(env.toUpperCase()));
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            provider.updateProfile(newEnvironment: val);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Text("App Actions", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white38)),
+          ),
+          
           if (provider.features['biometric_login'] ?? false)
             SwitchListTile(
-              secondary: const Icon(Icons.fingerprint, color: Colors.cyan),
+              secondary: const Icon(Icons.fingerprint, color: Color(0xFF22D3EE)),
               title: const Text("Biometric Login"),
-              subtitle: const Text("Use Fingerprint or FaceID"),
+              subtitle: const Text("Use Fingerprint or FaceID (Targeted UI)"),
               value: true,
+              activeColor: const Color(0xFF22D3EE),
               onChanged: (v) => provider.logUsage('biometric_login'),
             ),
-          const ListTile(leading: Icon(Icons.logout, color: Colors.red), title: Text("Log Out")),
+            
+          const ListTile(
+            leading: Icon(Icons.notifications_outlined),
+            title: Text("Notifications"),
+          ),
+          
+          const ListTile(
+            leading: Icon(Icons.logout, color: Colors.redAccent),
+            title: Text("Log Out", style: TextStyle(color: Colors.redAccent)),
+          ),
+          
+          // Debug stats footer
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+            child: Center(
+              child: Text(
+                "Device ID: ${provider.deviceId}\nFlagForge SDK v2.0.0",
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white24, fontSize: 10, fontFamily: 'monospace'),
+              ),
+            ),
+          )
         ],
       ),
     );

@@ -9,7 +9,7 @@ import RolloutRulesModal from './components/RolloutRulesModal';
 import { Settings, Shield, Activity, Hexagon, Plus } from 'lucide-react';
 import './index.css';
 
-function App() {
+function AppContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState(null);
   const [data, setData] = useState({
@@ -22,7 +22,11 @@ function App() {
     failed_events: 0,
     history: [],
     live_feed: [],
-    intelligence: []
+    intelligence: [],
+    rule_match_analytics: [],
+    geospatial_adoption: [],
+    device_distribution: [],
+    age_cohort_saturation: []
   });
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -75,20 +79,24 @@ function App() {
 
       {/* Main Grid */}
       <div className="main-grid">
-        
+
         {/* Left Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
+
           {/* Analytics Charts */}
           <div className="glass-panel">
             <div className="panel-header">
               <div className="panel-icon"><Activity size={20} /></div>
               <h2 className="panel-title">Real-Time Analytics Engine</h2>
             </div>
-            <AnalyticsCharts 
-              analytics={data.analytics} 
-              timeline={data.timeline} 
+            <AnalyticsCharts
+              analytics={data.analytics}
+              timeline={data.timeline}
               features={data.features}
+              ruleMatchAnalytics={data.rule_match_analytics}
+              geospatialAdoption={data.geospatial_adoption}
+              deviceDistribution={data.device_distribution}
+              ageCohortSaturation={data.age_cohort_saturation}
             />
           </div>
 
@@ -107,7 +115,9 @@ function App() {
 
         {/* Right Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
+
+
+
           {/* Feature Controls */}
           <div className="glass-panel">
             <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -115,21 +125,21 @@ function App() {
                 <div className="panel-icon"><Settings size={20} /></div>
                 <h2 className="panel-title">Feature Controls</h2>
               </div>
-              <button 
-                className="btn btn-primary" 
-                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} 
+              <button
+                className="btn btn-primary"
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
                 onClick={() => setIsModalOpen(true)}
               >
                 <Plus size={14} /> Add Flag
               </button>
             </div>
-            
+
             <div className="feature-list">
               {data.features.map(feature => (
-                <FeatureToggle 
-                  key={feature.feature_name} 
-                  feature={feature} 
-                  onUpdate={fetchData} 
+                <FeatureToggle
+                  key={feature.feature_name}
+                  feature={feature}
+                  onUpdate={fetchData}
                   onCardClick={setSelectedFeature}
                 />
               ))}
@@ -152,12 +162,12 @@ function App() {
 
         </div>
       </div>
-      <AddFeatureModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSuccess={fetchData} 
+      <AddFeatureModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchData}
       />
-      <RolloutRulesModal 
+      <RolloutRulesModal
         isOpen={!!selectedFeature}
         feature={selectedFeature ? (data.features.find(f => f.feature_name === selectedFeature.feature_name) || selectedFeature) : null}
         onClose={() => setSelectedFeature(null)}
@@ -165,6 +175,10 @@ function App() {
       />
     </div>
   );
+}
+
+function App() {
+  return <AppContent />;
 }
 
 export default App;

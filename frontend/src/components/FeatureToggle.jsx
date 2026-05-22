@@ -69,9 +69,14 @@ function FeatureToggle({ feature, onUpdate, onCardClick }) {
   return (
     <div className="feature-card" onClick={() => onCardClick(feature)}>
       <div className="feature-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="feature-name">{formatName(feature.feature_name)}</span>
-          {isDirty && <AlertCircle size={14} className="text-warning" title="Unsaved changes" />}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="feature-name">{feature.display_name || formatName(feature.feature_name)}</span>
+            {isDirty && <AlertCircle size={14} className="text-warning" title="Unsaved changes" />}
+          </div>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
+            key: {feature.flag_key || feature.feature_name}
+          </span>
         </div>
         <label className="switch-wrapper" onClick={(e) => e.stopPropagation()}>
           <input 
