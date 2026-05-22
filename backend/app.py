@@ -6,7 +6,9 @@ import mmh3
 from dotenv import load_dotenv
 import threading
 
-load_dotenv()
+# Load environment variables from the .env file in the same directory as this script
+base_dir = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(base_dir, '.env'))
 
 app = Flask(__name__)
 CORS(app)
@@ -101,6 +103,114 @@ def log_usage():
     finally:
         conn.close()
 
+@app.route('/add-feature', methods=['POST'])
+def add_feature():
+    data = request.json
+    if not data:
+        return jsonify({"error": "No JSON payload provided"}), 400
+
+    feature_name = data.get('feature_name')
+    is_enabled = data.get('is_enabled')
+    rollout_percentage = data.get('rollout_percentage')
+
+    if feature_name is None or is_enabled is None or rollout_percentage is None:
+        return jsonify({"error": "Missing required parameters (feature_name, is_enabled, rollout_percentage)"}), 400
+
+    # Sanitize the feature_name: convert to lowercase, replace spaces with underscores.
+    sanitized_name = str(feature_name).strip().lower().replace(" ", "_")
+    if not sanitized_name:
+        return jsonify({"error": "Feature name cannot be empty"}), 400
+
+    try:
+        rollout_percentage = int(rollout_percentage)
+        if not (0 <= rollout_percentage <= 100):
+            return jsonify({"error": "rollout_percentage must be between 0 and 100"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "rollout_percentage must be an integer"}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if the feature already exists
+            cursor.execute(
+                "SELECT 1 FROM feature_flags WHERE feature_name = %s",
+                (sanitized_name,)
+            )
+            if cursor.fetchone():
+                return jsonify({"error": f"Feature flag '{sanitized_name}' already exists"}), 409
+
+            # Insert into feature_flags table
+            cursor.execute(
+                "INSERT INTO feature_flags (feature_name, is_enabled, rollout_percentage) VALUES (%s, %s, %s)",
+                (sanitized_name, bool(is_enabled), rollout_percentage)
+            )
+
+            # Insert initial baseline record into feature_history
+            cursor.execute(
+                "INSERT INTO feature_history (feature_name, is_enabled, rollout_percentage) VALUES (%s, %s, %s)",
+                (sanitized_name, bool(is_enabled), rollout_percentage)
+            )
+
+            conn.commit()
+        return jsonify({
+            "status": "success", 
+            "message": "Feature flag created successfully", 
+            "feature_name": sanitized_name
+        }), 201
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    finally:
+        conn.close()
+
+@app.route('/delete-feature', methods=['POST'])
+def delete_feature():
+    data = request.json
+    if not data:
+        return jsonify({"error": "No JSON payload provided"}), 400
+
+    feature_name = data.get('feature_name')
+    if not feature_name:
+        return jsonify({"error": "Missing feature_name"}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if the feature flag exists
+            cursor.execute(
+                "SELECT 1 FROM feature_flags WHERE feature_name = %s",
+                (feature_name,)
+            )
+            if not cursor.fetchone():
+                return jsonify({"error": f"Feature flag '{feature_name}' not found"}), 404
+
+            # Delete from feature_flags
+            cursor.execute(
+                "DELETE FROM feature_flags WHERE feature_name = %s",
+                (feature_name,)
+            )
+            # Delete from feature_history
+            cursor.execute(
+                "DELETE FROM feature_history WHERE feature_name = %s",
+                (feature_name,)
+            )
+            # Delete from analytics
+            cursor.execute(
+                "DELETE FROM analytics WHERE feature_name = %s",
+                (feature_name,)
+            )
+
+            conn.commit()
+        return jsonify({
+            "status": "success", 
+            "message": f"Feature flag '{feature_name}' deleted successfully"
+        }), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    finally:
+        conn.close()
+
 @app.route('/update-feature', methods=['POST'])
 def update_feature():
     data = request.json
@@ -191,10 +301,11 @@ def get_dashboard_data():
             for d in devices:
                 d['registration_time'] = d['registration_time'].isoformat() if d['registration_time'] else None
             
-            # Get analytics summary
+            # Get analytics summary (last 10 minutes)
             cursor.execute('''
                 SELECT feature_name, usage_status, COUNT(*) as count 
                 FROM analytics 
+                WHERE timestamp >= NOW() - INTERVAL 10 MINUTE
                 GROUP BY feature_name, usage_status
             ''')
             analytics = cursor.fetchall()
@@ -219,11 +330,11 @@ def get_dashboard_data():
             ''')
             active_devices = cursor.fetchone()['active_count']
 
-            # Total Events & Failed Events
-            cursor.execute("SELECT COUNT(*) as total FROM analytics")
+            # Total Events & Failed Events (last 10 minutes)
+            cursor.execute("SELECT COUNT(*) as total FROM analytics WHERE timestamp >= NOW() - INTERVAL 10 MINUTE")
             total_events = cursor.fetchone()['total']
 
-            cursor.execute("SELECT COUNT(*) as failed FROM analytics WHERE usage_status = 'failed'")
+            cursor.execute("SELECT COUNT(*) as failed FROM analytics WHERE usage_status = 'failed' AND timestamp >= NOW() - INTERVAL 10 MINUTE")
             failed_events = cursor.fetchone()['failed']
 
             # Success Rate Calculation
@@ -291,13 +402,14 @@ def get_dashboard_data():
                         'is_enabled': is_enabled_final
                     })
 
-            # Adoption Rate (Users per feature)
+            # Adoption Rate (Users per feature - last 10 minutes)
             cursor.execute("SELECT COUNT(*) as total_devices FROM devices")
             total_devices_count = cursor.fetchone()['total_devices']
 
             cursor.execute('''
                 SELECT feature_name, COUNT(DISTINCT device_id) as unique_users 
                 FROM analytics 
+                WHERE timestamp >= NOW() - INTERVAL 10 MINUTE
                 GROUP BY feature_name
             ''')
             adoption = cursor.fetchall()

@@ -4,10 +4,14 @@ import ExecutiveCards from './components/ExecutiveCards';
 import AnalyticsCharts from './components/AnalyticsCharts';
 import RolloutIntelligence from './components/RolloutIntelligence';
 import LiveActivityFeed from './components/LiveActivityFeed';
-import { Settings, Shield, Activity, Hexagon } from 'lucide-react';
+import AddFeatureModal from './components/AddFeatureModal';
+import RolloutRulesModal from './components/RolloutRulesModal';
+import { Settings, Shield, Activity, Hexagon, Plus } from 'lucide-react';
 import './index.css';
 
 function App() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState(null);
   const [data, setData] = useState({
     features: [],
     devices: [],
@@ -106,9 +110,18 @@ function App() {
           
           {/* Feature Controls */}
           <div className="glass-panel">
-            <div className="panel-header">
-              <div className="panel-icon"><Settings size={20} /></div>
-              <h2 className="panel-title">Feature Controls</h2>
+            <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div className="panel-icon"><Settings size={20} /></div>
+                <h2 className="panel-title">Feature Controls</h2>
+              </div>
+              <button 
+                className="btn btn-primary" 
+                style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} 
+                onClick={() => setIsModalOpen(true)}
+              >
+                <Plus size={14} /> Add Flag
+              </button>
             </div>
             
             <div className="feature-list">
@@ -117,6 +130,7 @@ function App() {
                   key={feature.feature_name} 
                   feature={feature} 
                   onUpdate={fetchData} 
+                  onCardClick={setSelectedFeature}
                 />
               ))}
               {data.features.length === 0 && !loading && (
@@ -138,6 +152,17 @@ function App() {
 
         </div>
       </div>
+      <AddFeatureModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSuccess={fetchData} 
+      />
+      <RolloutRulesModal 
+        isOpen={!!selectedFeature}
+        feature={selectedFeature ? (data.features.find(f => f.feature_name === selectedFeature.feature_name) || selectedFeature) : null}
+        onClose={() => setSelectedFeature(null)}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }

@@ -4,6 +4,11 @@ import random
 import pymysql
 import mmh3
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables from the .env file in the same directory as this script
+base_dir = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(base_dir, '.env'))
 
 def is_feature_enabled_for_device(device_id, is_globally_enabled, rollout_percentage):
     if not is_globally_enabled:
@@ -67,10 +72,15 @@ def start_simulator():
             conn = get_db_connection()
             
             with conn.cursor() as cursor:
+                # Prune analytics older than 10 minutes to keep database size stable
+                cursor.execute("DELETE FROM analytics WHERE timestamp < NOW() - INTERVAL 10 MINUTE")
+                conn.commit()
+                
                 cursor.execute("SELECT feature_name, is_enabled, rollout_percentage FROM feature_flags")
                 flags = cursor.fetchall()
             
             flag_map = {f['feature_name']: f for f in flags}
+            db_features = [f['feature_name'] for f in flags] if flags else features
             
             # Simulate 15-40 actions every loop to create varied traffic
             num_actions = random.randint(20, 60)
@@ -85,7 +95,7 @@ def start_simulator():
                 else: # Occasional users 10%
                     user_id = random.choice(occasional_users)
 
-                feature = random.choice(features)
+                feature = random.choice(db_features)
                 f_data = flag_map.get(feature)
 
                 if f_data:

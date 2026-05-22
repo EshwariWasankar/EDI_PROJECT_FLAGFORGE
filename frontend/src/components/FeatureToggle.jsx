@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Save, RotateCcw, AlertCircle } from 'lucide-react';
 
-function FeatureToggle({ feature, onUpdate }) {
-  const [isEnabled, setIsEnabled] = useState(feature.is_enabled === 1);
+function FeatureToggle({ feature, onUpdate, onCardClick }) {
+  const [isEnabled, setIsEnabled] = useState(!!feature.is_enabled);
   const [percentage, setPercentage] = useState(feature.rollout_percentage);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -10,7 +10,7 @@ function FeatureToggle({ feature, onUpdate }) {
   useEffect(() => {
     // BUG FIX: Only update from props if the user hasn't made local unsaved changes.
     if (!isDirty) {
-      setIsEnabled(feature.is_enabled === 1);
+      setIsEnabled(!!feature.is_enabled);
       setPercentage(feature.rollout_percentage);
     }
   }, [feature, isDirty]);
@@ -67,13 +67,13 @@ function FeatureToggle({ feature, onUpdate }) {
   };
 
   return (
-    <div className="feature-card">
+    <div className="feature-card" onClick={() => onCardClick(feature)}>
       <div className="feature-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="feature-name">{formatName(feature.feature_name)}</span>
           {isDirty && <AlertCircle size={14} className="text-warning" title="Unsaved changes" />}
         </div>
-        <label className="switch-wrapper">
+        <label className="switch-wrapper" onClick={(e) => e.stopPropagation()}>
           <input 
             type="checkbox" 
             checked={isEnabled}
@@ -94,13 +94,14 @@ function FeatureToggle({ feature, onUpdate }) {
           max="100" 
           value={percentage}
           onChange={handleSlider}
+          onClick={(e) => e.stopPropagation()}
           className="range-slider"
           disabled={!isEnabled}
           style={{ opacity: isEnabled ? 1 : 0.5 }}
         />
       </div>
 
-      <div className="btn-group">
+      <div className="btn-group" onClick={(e) => e.stopPropagation()}>
         <button className="btn btn-ghost" onClick={handleRollback}>
           <RotateCcw size={16} />
           Revert

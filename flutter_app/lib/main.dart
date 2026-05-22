@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 // --- Configuration ---
-const String backendUrl = "http://192.168.0.125:5000"; // TODO: Move to a config file
+const String backendUrl = "http://192.168.1.4:5000"; // TODO: Move to a config file
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +43,8 @@ class FeatureProvider extends ChangeNotifier {
     'new_transfer_ui': false,
     'biometric_login': false,
     'spending_analytics': false,
+    'card_tab': false,
+    'cards_tab': false,
   };
   Timer? _timer;
 
@@ -82,6 +84,7 @@ class FeatureProvider extends ChangeNotifier {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         features = data.map((key, value) => MapEntry(key, value as bool));
+        debugPrint("Features updated: $features");
         notifyListeners();
       }
     } catch (e) {
@@ -130,17 +133,42 @@ class _MainNavigationState extends State<MainNavigation> {
     return ListenableBuilder(
       listenable: _provider,
       builder: (context, _) {
+        // Dynamically build active tabs list
+        final List<Widget> tabs = [
+          HomeScreen(provider: _provider),
+        ];
+
+        final List<BottomNavigationBarItem> navItems = [
+          const BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: "Home"),
+        ];
+
+        // Check card_tab or cards_tab feature flag
+        final bool showCardTab = (_provider.features['card_tab'] ?? _provider.features['cards_tab']) ?? false;
+        if (showCardTab) {
+          tabs.add(const Center(child: Text("Cards")));
+          navItems.add(const BottomNavigationBarItem(icon: Icon(Icons.credit_card), label: "Cards"));
+        }
+
+        // Check spending_analytics feature flag
+        final bool showAnalyticsTab = _provider.features['spending_analytics'] ?? false;
+        if (showAnalyticsTab) {
+          tabs.add(AnalyticsScreen(provider: _provider));
+          navItems.add(const BottomNavigationBarItem(icon: Icon(Icons.bar_chart_rounded), label: "Spending"));
+        }
+
+        // Settings tab is always visible
+        tabs.add(SettingsScreen(provider: _provider));
+        navItems.add(const BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"));
+
+        // Safeguard selected tab index bounds
+        if (_index >= tabs.length) {
+          _index = 0;
+        }
+
         return Scaffold(
           body: IndexedStack(
             index: _index,
-            children: [
-              HomeScreen(provider: _provider),
-              const Center(child: Text("Cards")),
-              _provider.features['spending_analytics']! 
-                ? AnalyticsScreen(provider: _provider)
-                : const Center(child: Text("Analytics Disabled (Check Dashboard)")),
-              SettingsScreen(provider: _provider),
-            ],
+            children: tabs,
           ),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _index,
@@ -149,13 +177,7 @@ class _MainNavigationState extends State<MainNavigation> {
             backgroundColor: const Color(0xFF0F172A),
             selectedItemColor: const Color(0xFF22D3EE),
             unselectedItemColor: Colors.blueGrey.shade600,
-            items: [
-              const BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: "Home"),
-              const BottomNavigationBarItem(icon: Icon(Icons.credit_card), label: "Cards"),
-              if (_provider.features['spending_analytics']!)
-                const BottomNavigationBarItem(icon: Icon(Icons.bar_chart_rounded), label: "Spending"),
-              const BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
-            ],
+            items: navItems,
           ),
         );
       },
@@ -247,7 +269,7 @@ class TransferScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isNewUI = provider.features['new_transfer_ui']!;
+    bool isNewUI = provider.features['new_transfer_ui'] ?? false;
 
     return Scaffold(
       appBar: AppBar(title: Text(isNewUI ? "Premium Transfer" : "Send Money")),
@@ -350,7 +372,7 @@ class SettingsScreen extends StatelessWidget {
         children: [
           const ListTile(leading: Icon(Icons.person), title: Text("Profile Information")),
           const ListTile(leading: Icon(Icons.notifications), title: Text("Notifications")),
-          if (provider.features['biometric_login']!)
+          if (provider.features['biometric_login'] ?? false)
             SwitchListTile(
               secondary: const Icon(Icons.fingerprint, color: Colors.cyan),
               title: const Text("Biometric Login"),
