@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, RotateCcw, AlertCircle } from 'lucide-react';
+import { Save, RotateCcw, AlertCircle, MoreVertical, Calendar, MessageSquare, Target } from 'lucide-react';
 
 function FeatureToggle({ feature, onUpdate, onCardClick }) {
   const [isEnabled, setIsEnabled] = useState(!!feature.is_enabled);
@@ -8,7 +8,7 @@ function FeatureToggle({ feature, onUpdate, onCardClick }) {
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
-    // BUG FIX: Only update from props if the user hasn't made local unsaved changes.
+    // Only update from props if the user hasn't made local unsaved changes.
     if (!isDirty) {
       setIsEnabled(!!feature.is_enabled);
       setPercentage(feature.rollout_percentage);
@@ -37,7 +37,7 @@ function FeatureToggle({ feature, onUpdate, onCardClick }) {
           rollout_percentage: parseInt(percentage, 10)
         })
       });
-      setIsDirty(false); // Changes saved, clear dirty flag
+      setIsDirty(false);
       onUpdate();
     } catch (error) {
       console.error('Failed to update feature', error);
@@ -55,7 +55,7 @@ function FeatureToggle({ feature, onUpdate, onCardClick }) {
           feature_name: feature.feature_name
         })
       });
-      setIsDirty(false); // Discard local changes on rollback
+      setIsDirty(false);
       onUpdate();
     } catch (error) {
       console.error('Failed to rollback feature', error);
@@ -66,31 +66,39 @@ function FeatureToggle({ feature, onUpdate, onCardClick }) {
     return name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
+  const rulesCount = Array.isArray(feature.rules_json) ? feature.rules_json.length : 0;
+
   return (
     <div className="feature-card" onClick={() => onCardClick(feature)}>
       <div className="feature-header">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className="feature-name">{feature.display_name || formatName(feature.feature_name)}</span>
-            {isDirty && <AlertCircle size={14} className="text-warning" title="Unsaved changes" />}
+            {isDirty && <AlertCircle size={13} className="text-warning" title="Unsaved changes" />}
           </div>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>
-            key: {feature.flag_key || feature.feature_name}
-          </span>
         </div>
-        <label className="switch-wrapper" onClick={(e) => e.stopPropagation()}>
-          <input 
-            type="checkbox" 
-            checked={isEnabled}
-            onChange={handleToggle}
-          />
-          <span className="switch-slider"></span>
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
+          <label className="switch-wrapper">
+            <input 
+              type="checkbox" 
+              checked={isEnabled}
+              onChange={handleToggle}
+            />
+            <span className="switch-slider"></span>
+          </label>
+          <button className="feature-more-btn" onClick={(e) => { e.stopPropagation(); onCardClick(feature); }}>
+            <MoreVertical size={16} />
+          </button>
+        </div>
       </div>
-      
-      <div className="slider-group">
+
+      <div className="feature-description">
+        {feature.description || `Feature flag for ${formatName(feature.feature_name).toLowerCase()}`}
+      </div>
+
+      <div className="slider-group" onClick={(e) => e.stopPropagation()}>
         <div className="slider-labels">
-          <span>Rollout Percentage</span>
+          <span>Rollout</span>
           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{percentage}%</span>
         </div>
         <input 
@@ -99,27 +107,43 @@ function FeatureToggle({ feature, onUpdate, onCardClick }) {
           max="100" 
           value={percentage}
           onChange={handleSlider}
-          onClick={(e) => e.stopPropagation()}
           className="range-slider"
           disabled={!isEnabled}
-          style={{ opacity: isEnabled ? 1 : 0.5 }}
+          style={{ opacity: isEnabled ? 1 : 0.4 }}
         />
       </div>
 
-      <div className="btn-group" onClick={(e) => e.stopPropagation()}>
-        <button className="btn btn-ghost" onClick={handleRollback}>
-          <RotateCcw size={16} />
-          Revert
-        </button>
-        <button 
-          className="btn btn-primary" 
-          onClick={handleSave} 
-          disabled={!isDirty || isSaving}
-        >
-          <Save size={16} />
-          {isSaving ? 'Saving...' : 'Save'}
-        </button>
+      {/* Meta row */}
+      <div className="feature-meta">
+        <div className="feature-meta-item">
+          <Calendar size={12} />
+          <span>{feature.flag_key || feature.feature_name}</span>
+        </div>
+        {rulesCount > 0 && (
+          <div className="feature-meta-item">
+            <Target size={12} />
+            <span>{rulesCount} rule{rulesCount !== 1 ? 's' : ''}</span>
+          </div>
+        )}
       </div>
+
+      {/* Action Buttons */}
+      {isDirty && (
+        <div className="btn-group" onClick={(e) => e.stopPropagation()}>
+          <button className="btn btn-ghost" onClick={handleRollback}>
+            <RotateCcw size={14} />
+            Revert
+          </button>
+          <button 
+            className="btn btn-primary" 
+            onClick={handleSave} 
+            disabled={!isDirty || isSaving}
+          >
+            <Save size={14} />
+            {isSaving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

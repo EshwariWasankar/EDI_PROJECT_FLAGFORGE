@@ -1,60 +1,71 @@
 import React from 'react';
-import { Smartphone, Activity, CheckCircle, XCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
 
 function ExecutiveCards({ data }) {
-  const { devices, active_devices, total_events, failed_events, features } = data;
+  const { devices, active_devices, total_events, failed_events, features, success_rate } = data;
   
   const totalDevices = devices ? devices.length : 0;
-  
-  const successRate = total_events > 0 
+  const activeFlags = features ? features.filter(f => f.is_enabled).length : 0;
+  const displayRate = success_rate || (total_events > 0 
     ? (((total_events - failed_events) / total_events) * 100).toFixed(1)
-    : 100;
+    : 100);
+
+  // Mini bar chart data from timeline or simulated
+  const miniBarHeights = [28, 42, 38, 52, 44, 30, 48];
 
   return (
-    <div className="kpi-grid">
-      <div className="glass-panel" style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div className="panel-icon"><Smartphone size={24} /></div>
-          <div>
-            <div className="dashboard-subtitle">Total Registered Devices</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{totalDevices}</div>
+    <div className="kpi-strip">
+      {/* Active Flags */}
+      <div className="kpi-card">
+        <div className="kpi-card-header">
+          <span className="kpi-label">Active Flags</span>
+          <div className="kpi-mini-chart">
+            {miniBarHeights.map((h, i) => (
+              <div key={i} className="kpi-mini-bar" style={{ height: `${h}%` }} />
+            ))}
           </div>
         </div>
-      </div>
-      
-      <div className="glass-panel" style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div className="panel-icon" style={{ color: 'var(--accent-success)', background: 'var(--accent-success-bg)' }}>
-            <Activity size={24} />
-          </div>
-          <div>
-            <div className="dashboard-subtitle">Active Devices (5m)</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{active_devices || 0}</div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="glass-panel" style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div className="panel-icon" style={{ color: 'var(--accent-purple)', background: 'rgba(139, 92, 246, 0.1)' }}>
-            <CheckCircle size={24} />
-          </div>
-          <div>
-            <div className="dashboard-subtitle">Rollout Success Rate</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{successRate}%</div>
-          </div>
+        <div className="kpi-value">{activeFlags}</div>
+        <div className="kpi-footer">
+          <span className="kpi-trend-up"><TrendingUp size={12} /></span>
+          <span>of {features ? features.length : 0} total</span>
         </div>
       </div>
 
-      <div className="glass-panel" style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div className="panel-icon" style={{ color: 'var(--accent-danger)', background: 'var(--accent-danger-bg)' }}>
-            <XCircle size={24} />
-          </div>
-          <div>
-            <div className="dashboard-subtitle">Failed Feature Events</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{failed_events || 0}</div>
-          </div>
+      {/* Success Rate */}
+      <div className="kpi-card">
+        <div className="kpi-card-header">
+          <span className="kpi-label">Success Rate</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
+          <div className="kpi-value">{displayRate}%</div>
+        </div>
+        <div className="kpi-footer">
+          <span>Successful evaluations</span>
+        </div>
+      </div>
+
+      {/* Total Events */}
+      <div className="kpi-card">
+        <div className="kpi-card-header">
+          <span className="kpi-label">Total Events</span>
+        </div>
+        <div className="kpi-value">{total_events || 0}</div>
+        <div className="kpi-footer">
+          <span>Last 10 minutes</span>
+          <ArrowRight size={12} />
+        </div>
+      </div>
+
+      {/* Active Devices */}
+      <div className="kpi-card">
+        <div className="kpi-card-header">
+          <span className="kpi-label">Active Devices</span>
+        </div>
+        <div className="kpi-value">{active_devices || 0}</div>
+        <div className="kpi-footer">
+          <span>of {totalDevices} registered</span>
+          <ArrowRight size={12} />
         </div>
       </div>
     </div>

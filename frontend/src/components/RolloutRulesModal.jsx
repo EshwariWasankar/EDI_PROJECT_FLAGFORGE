@@ -250,7 +250,7 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
         <div className="modal-body" style={{ overflowY: 'auto', flex: 1, paddingRight: '1rem' }}>
           
           {/* General Flag Properties */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--glass-border)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'var(--bg-base)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
             <div className="form-group">
               <label className="form-label">Display Name</label>
               <input 
@@ -320,7 +320,7 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
               <button 
                 className="btn btn-ghost" 
                 onClick={addRule}
-                style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', gap: '4px', border: '1px solid rgba(255,255,255,0.1)' }}
+                style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', gap: '4px', border: '1px solid var(--border-light)' }}
               >
                 <Plus size={14} /> Add Rule
               </button>
@@ -330,9 +330,9 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
               {rules.map((rule, rIdx) => (
                 <div 
                   key={rule.id} 
-                  style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
+                  style={{ background: 'var(--bg-base)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-light)', paddingBottom: '0.5rem' }}>
                     <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-brand)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Shield size={14} /> Rule #{rIdx + 1}
                     </span>
@@ -436,7 +436,7 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
                   </div>
 
                   {/* Rule Outcome (Serve value) */}
-                  <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '4px', padding: '0.6rem 0.85rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-surface-raised)', border: '1px solid var(--border-light)', borderRadius: '4px', padding: '0.6rem 0.85rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Sliders size={14} /> Serve:
@@ -458,7 +458,7 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
               ))}
 
               {rules.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '1.5rem', background: 'rgba(255,255,255,0.01)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--glass-border)' }}>
+                <div style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--bg-base)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-light)' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>No custom targeting rules defined. Falls back to default rollout card strategy.</span>
                 </div>
               )}
@@ -530,7 +530,7 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
         </div>
 
         {/* Modal Action Buttons */}
-        <div style={{ padding: '1.25rem', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', background: 'var(--bg-surface)' }}>
+        <div style={{ padding: '1.25rem', borderTop: '1px solid var(--border-light)', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', background: 'var(--bg-surface)' }}>
           <button className="btn btn-ghost" onClick={handleClose} disabled={isSaving}>
             Cancel
           </button>

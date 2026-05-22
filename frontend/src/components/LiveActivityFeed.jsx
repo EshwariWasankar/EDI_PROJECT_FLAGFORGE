@@ -1,9 +1,13 @@
 import React from 'react';
-import { Activity, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 
 function LiveActivityFeed({ feed }) {
   if (!feed || feed.length === 0) {
-    return <div className="dashboard-subtitle">No recent activity.</div>;
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.8125rem' }}>
+        No recent activity
+      </div>
+    );
   }
 
   const formatName = (name) => {
@@ -17,27 +21,29 @@ function LiveActivityFeed({ feed }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.25rem' }}>
       {feed.map((event, idx) => {
         const isSuccess = event.usage_status === 'used';
         return (
-          <div key={idx} style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between',
-            padding: '0.75rem', 
-            background: 'rgba(255,255,255,0.02)',
-            borderRadius: 'var(--radius-sm)',
-            borderLeft: `3px solid ${isSuccess ? 'var(--accent-success)' : 'var(--accent-danger)'}`
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              {isSuccess ? <ShieldCheck size={18} className="text-success" /> : <ShieldAlert size={18} className="text-danger" />}
+          <div 
+            key={idx} 
+            className={`feed-item ${isSuccess ? 'feed-item-success' : 'feed-item-failed'}`}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+              {isSuccess 
+                ? <CheckCircle2 size={16} className="text-success" /> 
+                : <XCircle size={16} className="text-danger" />
+              }
               <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{formatName(event.feature_name)}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{event.device_id}</div>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                  {formatName(event.feature_name)}
+                </div>
+                <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>
+                  {event.device_id}
+                </div>
               </div>
             </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
               {getTimeAgo(event.timestamp)}
             </div>
           </div>

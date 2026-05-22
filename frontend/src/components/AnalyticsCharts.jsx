@@ -38,35 +38,40 @@ function AnalyticsCharts({
 }) {
   if (!features || features.length === 0) return null;
 
-  // Global Chart Options
+  // Light theme chart options
   const commonOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         labels: {
-          color: '#94A3B8',
-          font: { family: "'Inter', sans-serif", size: 11 }
+          color: '#6B7280',
+          font: { family: "'Inter', sans-serif", size: 11, weight: '500' },
+          usePointStyle: true,
+          pointStyleWidth: 8,
+          padding: 16,
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-        titleColor: '#F8FAFC',
-        bodyColor: '#94A3B8',
-        borderColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: '#1A1A1A',
+        titleColor: '#FFFFFF',
+        bodyColor: '#D4D4D8',
+        borderColor: '#374151',
         borderWidth: 1,
         padding: 10,
-        boxPadding: 4
+        boxPadding: 4,
+        cornerRadius: 8,
+        titleFont: { weight: '600' },
       }
     },
     scales: {
       x: { 
-        ticks: { color: '#64748B' }, 
-        grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false } 
+        ticks: { color: '#9CA3AF', font: { size: 11 } }, 
+        grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false } 
       },
       y: { 
-        ticks: { color: '#64748B' }, 
-        grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false } 
+        ticks: { color: '#9CA3AF', font: { size: 11 } }, 
+        grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false } 
       }
     }
   };
@@ -89,7 +94,7 @@ function AnalyticsCharts({
           const item = analytics.find(a => a.feature_name === f.feature_name && a.usage_status === 'used');
           return item ? item.count : 0;
         }),
-        backgroundColor: 'rgba(16, 185, 129, 0.8)',
+        backgroundColor: '#1A1A1A',
         borderRadius: 4,
       },
       {
@@ -98,7 +103,7 @@ function AnalyticsCharts({
           const item = analytics.find(a => a.feature_name === f.feature_name && a.usage_status === 'failed');
           return item ? item.count : 0;
         }),
-        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+        backgroundColor: '#D4D4D8',
         borderRadius: 4,
       },
     ],
@@ -112,7 +117,7 @@ function AnalyticsCharts({
     }
   };
 
-  // 2. Average Rollout Dist (Doughnut)
+  // 2. Average Rollout Distribution (Doughnut)
   const avgRollout = features.reduce((acc, f) => acc + (f.is_enabled ? f.rollout_percentage : 0), 0) / features.length;
     
   const doughnutData = {
@@ -121,8 +126,8 @@ function AnalyticsCharts({
       {
         data: [avgRollout, 100 - avgRollout],
         backgroundColor: [
-          'rgba(59, 130, 246, 0.8)',
-          'rgba(30, 41, 59, 0.8)',
+          '#1A1A1A',
+          '#E5E5E5',
         ],
         borderWidth: 0,
         hoverOffset: 4
@@ -134,9 +139,10 @@ function AnalyticsCharts({
   const minutes = [...new Set(timeline.map(t => t.minute))].sort();
   const lineDatasets = features.map((f, i) => {
     const colors = [
-      { border: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)' },
-      { border: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.1)' },
-      { border: '#10B981', bg: 'rgba(16, 185, 129, 0.1)' }
+      { border: '#1A1A1A', bg: 'rgba(26, 26, 26, 0.06)' },
+      { border: '#7C3AED', bg: 'rgba(124, 58, 237, 0.06)' },
+      { border: '#16A34A', bg: 'rgba(22, 163, 74, 0.06)' },
+      { border: '#3B82F6', bg: 'rgba(59, 130, 246, 0.06)' },
     ];
     return {
       label: f.feature_name.split('_').join(' '),
@@ -149,7 +155,8 @@ function AnalyticsCharts({
       fill: true,
       tension: 0.4,
       pointRadius: 2,
-      pointHoverRadius: 5
+      pointHoverRadius: 5,
+      borderWidth: 2,
     };
   });
 
@@ -161,19 +168,15 @@ function AnalyticsCharts({
   // 4. Targeting Rules Activation (Doughnut)
   const ruleLabels = ruleMatchAnalytics.map(r => r.matched_rule_id === 'default' ? 'Global Default' : r.matched_rule_id);
   const ruleCounts = ruleMatchAnalytics.map(r => r.count);
+  const ruleColors = ['#1A1A1A', '#7C3AED', '#0D9488', '#3B82F6', '#D97706', '#16A34A', '#9CA3AF'];
   const ruleDoughnutData = {
     labels: ruleLabels.length > 0 ? ruleLabels : ['No Rules Evaluated'],
     datasets: [
       {
         data: ruleCounts.length > 0 ? ruleCounts : [1],
-        backgroundColor: ruleCounts.length > 0 ? [
-          'rgba(139, 92, 246, 0.85)', // Purple
-          'rgba(20, 184, 166, 0.85)', // Teal
-          'rgba(59, 130, 246, 0.85)', // Blue
-          'rgba(245, 158, 11, 0.85)', // Amber
-          'rgba(16, 185, 129, 0.85)', // Emerald
-          'rgba(71, 85, 105, 0.8)'    // Dark slate
-        ] : ['rgba(30, 41, 59, 0.4)'],
+        backgroundColor: ruleCounts.length > 0 
+          ? ruleLabels.map((_, i) => ruleColors[i % ruleColors.length])
+          : ['#E5E5E5'],
         borderWidth: 0,
         hoverOffset: 4
       }
@@ -187,9 +190,9 @@ function AnalyticsCharts({
     labels: geoLabels.length > 0 ? geoLabels : ['No Data'],
     datasets: [
       {
-        label: 'Success Evaluations',
+        label: 'Evaluations',
         data: geoCounts.length > 0 ? geoCounts : [0],
-        backgroundColor: 'rgba(20, 184, 166, 0.8)',
+        backgroundColor: '#0D9488',
         borderRadius: 4
       }
     ]
@@ -203,21 +206,21 @@ function AnalyticsCharts({
     }
   };
 
-  // 6. Device Distribution Efficiency (Doughnut)
+  // 6. Device Distribution (Doughnut)
   const devLabels = deviceDistribution.map(d => d.device_type || 'Unknown');
   const devCounts = deviceDistribution.map(d => d.count);
   const getDeviceColor = (type) => {
-    if (type === 'iOS') return 'rgba(139, 92, 246, 0.8)';
-    if (type === 'Android') return 'rgba(16, 185, 129, 0.8)';
-    if (type === 'Web') return 'rgba(59, 130, 246, 0.8)';
-    return 'rgba(100, 116, 139, 0.8)';
+    if (type === 'iOS') return '#7C3AED';
+    if (type === 'Android') return '#16A34A';
+    if (type === 'Web') return '#3B82F6';
+    return '#9CA3AF';
   };
   const devDoughnutData = {
     labels: devLabels.length > 0 ? devLabels : ['No Data'],
     datasets: [
       {
         data: devCounts.length > 0 ? devCounts : [1],
-        backgroundColor: devLabels.length > 0 ? devLabels.map(getDeviceColor) : ['rgba(30, 41, 59, 0.4)'],
+        backgroundColor: devLabels.length > 0 ? devLabels.map(getDeviceColor) : ['#E5E5E5'],
         borderWidth: 0,
         hoverOffset: 4
       }
@@ -236,7 +239,7 @@ function AnalyticsCharts({
       {
         label: 'Activation Ratio (%)',
         data: cohortAverages,
-        backgroundColor: 'rgba(139, 92, 246, 0.8)',
+        backgroundColor: '#1A1A1A',
         borderRadius: 4
       }
     ]
@@ -262,63 +265,79 @@ function AnalyticsCharts({
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+    <div className="charts-grid">
       
       {/* SECTION 1: SYSTEM TELEMETRY */}
-      <div style={{ gridColumn: '1 / -1', marginBottom: '-0.5rem' }}>
-        <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--accent-brand)', margin: 0, fontWeight: 600 }}>System Telemetry</h4>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <div className="section-title" style={{ marginBottom: '0.75rem' }}>System Telemetry</div>
       </div>
 
-      <div style={{ height: '280px', position: 'relative' }}>
-        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Usage & Failure Events</h3>
-        <Bar data={barData} options={barOptions} />
-      </div>
-      
-      <div style={{ height: '280px', position: 'relative' }}>
-        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Average Rollout Exposure</h3>
+      <div className="chart-card">
+        <div className="chart-card-title">Usage & Failure Events</div>
         <div style={{ height: '240px' }}>
-          <Doughnut data={doughnutData} options={{...noScaleOptions, cutout: '75%'}} />
+          <Bar data={barData} options={barOptions} />
         </div>
       </div>
       
-      <div style={{ height: '280px', position: 'relative', gridColumn: '1 / -1' }}>
-        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Real-Time Activity Timeline (10m)</h3>
-        <Line data={lineData} options={commonOptions} />
-      </div>
-
-      {/* SECTION 2: DEMOGRAPHIC & RULE TARGETING INTELLIGENCE */}
-      <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--glass-border)', paddingTop: '2rem', marginTop: '1rem', marginBottom: '-0.5rem' }}>
-        <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1.5px', color: 'var(--accent-purple)', margin: 0, fontWeight: 600 }}>Targeting & Demographic Intelligence</h4>
-      </div>
-
-      {/* Rule Match Doughnut */}
-      <div style={{ height: '280px', position: 'relative' }}>
-        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Targeting Rule Matches</h3>
-        <div style={{ height: '240px' }}>
-          <Doughnut data={ruleDoughnutData} options={{...noScaleOptions, cutout: '75%'}} />
+      <div className="chart-card">
+        <div className="chart-card-title">Average Rollout Exposure</div>
+        <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '200px', height: '200px', position: 'relative' }}>
+            <Doughnut data={doughnutData} options={{...noScaleOptions, cutout: '78%'}} />
+            <div style={{ 
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(avgRollout)}%</div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>Avg Reach</div>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Device Distribution Doughnut */}
-      <div style={{ height: '280px', position: 'relative' }}>
-        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Device Type Efficiency</h3>
-        <div style={{ height: '240px' }}>
-          <Doughnut data={devDoughnutData} options={{...noScaleOptions, cutout: '75%'}} />
-        </div>
-      </div>
-
-      {/* Geospatial Adoption Bar */}
-      <div style={{ height: '280px', position: 'relative' }}>
-        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Geospatial Adoption Rate</h3>
-        <Bar data={geoBarData} options={geoOptions} />
-      </div>
-
-      {/* Age Cohort Saturation Bar */}
-      <div style={{ height: '280px', position: 'relative' }}>
-        <h3 className="dashboard-subtitle" style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Age Cohort Saturation</h3>
-        <Bar data={ageBarData} options={ageOptions} />
       </div>
       
+      <div className="chart-card" style={{ gridColumn: '1 / -1' }}>
+        <div className="chart-card-title">Real-Time Activity Timeline (10m)</div>
+        <div style={{ height: '220px' }}>
+          <Line data={lineData} options={commonOptions} />
+        </div>
+      </div>
+
+      {/* SECTION 2: DEMOGRAPHIC & RULE TARGETING */}
+      <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-light)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
+        <div className="section-title" style={{ marginBottom: '0.75rem' }}>Targeting & Demographic Intelligence</div>
+      </div>
+
+      <div className="chart-card">
+        <div className="chart-card-title">Targeting Rule Matches</div>
+        <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '190px', height: '190px' }}>
+            <Doughnut data={ruleDoughnutData} options={{...noScaleOptions, cutout: '72%'}} />
+          </div>
+        </div>
+      </div>
+
+      <div className="chart-card">
+        <div className="chart-card-title">Device Type Distribution</div>
+        <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '190px', height: '190px' }}>
+            <Doughnut data={devDoughnutData} options={{...noScaleOptions, cutout: '72%'}} />
+          </div>
+        </div>
+      </div>
+
+      <div className="chart-card">
+        <div className="chart-card-title">Geospatial Adoption</div>
+        <div style={{ height: '220px' }}>
+          <Bar data={geoBarData} options={geoOptions} />
+        </div>
+      </div>
+
+      <div className="chart-card">
+        <div className="chart-card-title">Age Cohort Saturation</div>
+        <div style={{ height: '220px' }}>
+          <Bar data={ageBarData} options={ageOptions} />
+        </div>
+      </div>
     </div>
   );
 }
