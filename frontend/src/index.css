@@ -1175,3 +1175,99 @@ input:checked + .switch-slider:before {
     padding: 1rem;
   }
 }
+
+/* ========== DUAL RANGE SLIDER ========== */
+.dual-range-container {
+  position: relative;
+  width: 100%;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.dual-range-track {
+  position: absolute;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background-color: var(--border-light, #E5E5E5);
+  z-index: 1;
+}
+
+.dual-range-progress {
+  position: absolute;
+  height: 6px;
+  border-radius: 3px;
+  background-color: var(--accent-blue, #3B82F6);
+  z-index: 2;
+}
+
+.dual-range-input {
+  position: absolute;
+  width: 100%;
+  height: 24px;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  outline: none;
+}
+
+/* Chrome, Safari, Opera, Edge */
+.dual-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  border: 2px solid var(--accent-blue, #3B82F6);
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 0.1s ease, border-color 0.1s;
+}
+
+.dual-range-input::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.dual-range-input::-webkit-slider-thumb:active {
+  transform: scale(1.25);
+  background-color: var(--bg-hover, #F7F7F5);
+}
+
+/* Firefox */
+.dual-range-input::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  border: 2px solid var(--accent-blue, #3B82F6);
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 0.1s ease, border-color 0.1s;
+}
+
+.dual-range-input::-moz-range-thumb:hover {
+  transform: scale(1.15);
+}
+
+.dual-range-input::-moz-range-thumb:active {
+  transform: scale(1.25);
+  background-color: var(--bg-hover, #F7F7F5);
+}
+
+.dual-range-input::-webkit-slider-runnable-track {
+  background: transparent;
+  border: none;
+}
+
+.dual-range-input::-moz-range-track {
+  background: transparent;
+  border: none;
+}
+

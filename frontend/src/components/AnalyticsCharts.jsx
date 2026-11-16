@@ -38,14 +38,15 @@ function AnalyticsCharts({
 }) {
   if (!features || features.length === 0) return null;
 
-  // Light theme chart options
+  // Modern typography & colors matching a premium fintech theme
   const commonOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
+        position: 'top',
         labels: {
-          color: '#6B7280',
+          color: '#4B5563',
           font: { family: "'Inter', sans-serif", size: 11, weight: '500' },
           usePointStyle: true,
           pointStyleWidth: 8,
@@ -53,40 +54,94 @@ function AnalyticsCharts({
         }
       },
       tooltip: {
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#1E293B',
         titleColor: '#FFFFFF',
-        bodyColor: '#D4D4D8',
-        borderColor: '#374151',
+        bodyColor: '#F3F4F6',
+        borderColor: '#E5E7EB',
         borderWidth: 1,
         padding: 10,
         boxPadding: 4,
         cornerRadius: 8,
-        titleFont: { weight: '600' },
+        titleFont: { family: "'Inter', sans-serif", weight: '600' },
+        bodyFont: { family: "'Inter', sans-serif" },
       }
     },
     scales: {
       x: { 
-        ticks: { color: '#9CA3AF', font: { size: 11 } }, 
-        grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false } 
+        ticks: { 
+          color: '#9CA3AF', 
+          font: { size: 10, family: "'Inter', sans-serif" },
+          maxRotation: 0,
+          minRotation: 0
+        }, 
+        grid: { color: 'rgba(0,0,0,0.02)', drawTicks: false },
+        border: { display: false }
       },
       y: { 
-        ticks: { color: '#9CA3AF', font: { size: 11 } }, 
-        grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false } 
+        ticks: { 
+          color: '#9CA3AF', 
+          font: { size: 10, family: "'Inter', sans-serif" } 
+        }, 
+        grid: { color: 'rgba(0,0,0,0.02)', drawTicks: false },
+        border: { display: false }
       }
     }
   };
 
+  // noScaleOptions (used for Doughnut without legend/scales to prevent shifting)
   const noScaleOptions = {
     ...commonOptions,
+    plugins: {
+      ...commonOptions.plugins,
+      legend: { display: false }
+    },
     scales: {
       x: { display: false },
       y: { display: false }
     }
   };
 
+  // doughnutOptionsWithLegend (used for Doughnut charts, positioned at the bottom)
+  const doughnutOptionsWithLegend = {
+    ...commonOptions,
+    plugins: {
+      ...commonOptions.plugins,
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          color: '#6B7280',
+          font: { family: "'Inter', sans-serif", size: 10, weight: '500' },
+          usePointStyle: true,
+          pointStyleWidth: 6,
+          padding: 12,
+        }
+      }
+    },
+    scales: {
+      x: { display: false },
+      y: { display: false }
+    }
+  };
+
+  // Label Formatting Helpers
+  const formatLabel = (name) => {
+    return name.split('_').map(word => {
+      if (word.toLowerCase() === 'ui') return 'UI';
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    });
+  };
+  
+  const formatLegendLabel = (name) => {
+    return name.split('_').map(word => {
+      if (word.toLowerCase() === 'ui') return 'UI';
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  };
+
   // 1. Feature Usage (Success vs Failure)
   const barData = {
-    labels: features.map(f => f.feature_name.split('_').join(' ')),
+    labels: features.map(f => formatLabel(f.feature_name)),
     datasets: [
       {
         label: 'Success',
@@ -94,7 +149,7 @@ function AnalyticsCharts({
           const item = analytics.find(a => a.feature_name === f.feature_name && a.usage_status === 'used');
           return item ? item.count : 0;
         }),
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#10B981', // Premium Emerald Green
         borderRadius: 4,
       },
       {
@@ -103,7 +158,7 @@ function AnalyticsCharts({
           const item = analytics.find(a => a.feature_name === f.feature_name && a.usage_status === 'failed');
           return item ? item.count : 0;
         }),
-        backgroundColor: '#D4D4D8',
+        backgroundColor: '#EF4444', // Premium Rose Red
         borderRadius: 4,
       },
     ],
@@ -126,8 +181,8 @@ function AnalyticsCharts({
       {
         data: [avgRollout, 100 - avgRollout],
         backgroundColor: [
-          '#1A1A1A',
-          '#E5E5E5',
+          '#4F46E5', // Indigo
+          '#E5E7EB', // Neutral light grey
         ],
         borderWidth: 0,
         hoverOffset: 4
@@ -139,13 +194,13 @@ function AnalyticsCharts({
   const minutes = [...new Set(timeline.map(t => t.minute))].sort();
   const lineDatasets = features.map((f, i) => {
     const colors = [
-      { border: '#1A1A1A', bg: 'rgba(26, 26, 26, 0.06)' },
-      { border: '#7C3AED', bg: 'rgba(124, 58, 237, 0.06)' },
-      { border: '#16A34A', bg: 'rgba(22, 163, 74, 0.06)' },
-      { border: '#3B82F6', bg: 'rgba(59, 130, 246, 0.06)' },
+      { border: '#4F46E5', bg: 'rgba(79, 70, 229, 0.05)' }, // Indigo
+      { border: '#0D9488', bg: 'rgba(13, 148, 136, 0.05)' }, // Teal
+      { border: '#EA580C', bg: 'rgba(234, 88, 12, 0.05)' }, // Orange
+      { border: '#E11D48', bg: 'rgba(225, 29, 72, 0.05)' }, // Rose
     ];
     return {
-      label: f.feature_name.split('_').join(' '),
+      label: formatLegendLabel(f.feature_name),
       data: minutes.map(m => {
         const item = timeline.find(t => t.minute === m && t.feature_name === f.feature_name);
         return item ? item.count : 0;
@@ -154,9 +209,9 @@ function AnalyticsCharts({
       backgroundColor: colors[i % colors.length].bg,
       fill: true,
       tension: 0.4,
-      pointRadius: 2,
-      pointHoverRadius: 5,
-      borderWidth: 2,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      borderWidth: 2.5,
     };
   });
 
@@ -168,7 +223,7 @@ function AnalyticsCharts({
   // 4. Targeting Rules Activation (Doughnut)
   const ruleLabels = ruleMatchAnalytics.map(r => r.matched_rule_id === 'default' ? 'Global Default' : r.matched_rule_id);
   const ruleCounts = ruleMatchAnalytics.map(r => r.count);
-  const ruleColors = ['#1A1A1A', '#7C3AED', '#0D9488', '#3B82F6', '#D97706', '#16A34A', '#9CA3AF'];
+  const ruleColors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#9CA3AF'];
   const ruleDoughnutData = {
     labels: ruleLabels.length > 0 ? ruleLabels : ['No Rules Evaluated'],
     datasets: [
@@ -176,7 +231,7 @@ function AnalyticsCharts({
         data: ruleCounts.length > 0 ? ruleCounts : [1],
         backgroundColor: ruleCounts.length > 0 
           ? ruleLabels.map((_, i) => ruleColors[i % ruleColors.length])
-          : ['#E5E5E5'],
+          : ['#E5E7EB'],
         borderWidth: 0,
         hoverOffset: 4
       }
@@ -192,7 +247,7 @@ function AnalyticsCharts({
       {
         label: 'Evaluations',
         data: geoCounts.length > 0 ? geoCounts : [0],
-        backgroundColor: '#0D9488',
+        backgroundColor: '#0D9488', // Teal
         borderRadius: 4
       }
     ]
@@ -210,9 +265,9 @@ function AnalyticsCharts({
   const devLabels = deviceDistribution.map(d => d.device_type || 'Unknown');
   const devCounts = deviceDistribution.map(d => d.count);
   const getDeviceColor = (type) => {
-    if (type === 'iOS') return '#7C3AED';
-    if (type === 'Android') return '#16A34A';
-    if (type === 'Web') return '#3B82F6';
+    if (type === 'iOS') return '#8B5CF6'; // Violet
+    if (type === 'Android') return '#10B981'; // Emerald
+    if (type === 'Web') return '#3B82F6'; // Blue
     return '#9CA3AF';
   };
   const devDoughnutData = {
@@ -220,7 +275,7 @@ function AnalyticsCharts({
     datasets: [
       {
         data: devCounts.length > 0 ? devCounts : [1],
-        backgroundColor: devLabels.length > 0 ? devLabels.map(getDeviceColor) : ['#E5E5E5'],
+        backgroundColor: devLabels.length > 0 ? devLabels.map(getDeviceColor) : ['#E5E7EB'],
         borderWidth: 0,
         hoverOffset: 4
       }
@@ -239,7 +294,7 @@ function AnalyticsCharts({
       {
         label: 'Activation Ratio (%)',
         data: cohortAverages,
-        backgroundColor: '#1A1A1A',
+        backgroundColor: '#4F46E5', // Indigo
         borderRadius: 4
       }
     ]
@@ -272,13 +327,25 @@ function AnalyticsCharts({
         <div className="section-title" style={{ marginBottom: '0.75rem' }}>System Telemetry</div>
       </div>
 
-      <div className="chart-card">
+      <div className="chart-card" style={{ gridColumn: '1 / -1' }}>
+        <div className="chart-card-title">Real-Time Activity Timeline (10m)</div>
+        <div style={{ height: '220px' }}>
+          <Line data={lineData} options={commonOptions} />
+        </div>
+      </div>
+
+      <div className="chart-card" style={{ gridColumn: '1 / -1' }}>
         <div className="chart-card-title">Usage & Failure Events</div>
         <div style={{ height: '240px' }}>
           <Bar data={barData} options={barOptions} />
         </div>
       </div>
       
+      {/* SECTION 2: MURMUR HASHING & ROLLOUT STRATEGY */}
+      <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-light)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
+        <div className="section-title" style={{ marginBottom: '0.75rem' }}>Murmur Hashing & Rollout Strategy</div>
+      </div>
+
       <div className="chart-card">
         <div className="chart-card-title">Average Rollout Exposure</div>
         <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -288,39 +355,32 @@ function AnalyticsCharts({
               position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
               textAlign: 'center'
             }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(avgRollout)}%</div>
-              <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>Avg Reach</div>
+              <div style={{ fontSize: '1.625rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>{Math.round(avgRollout)}%</div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', tracking: '0.5px', marginTop: '2px' }}>Avg Reach</div>
             </div>
           </div>
         </div>
       </div>
-      
-      <div className="chart-card" style={{ gridColumn: '1 / -1' }}>
-        <div className="chart-card-title">Real-Time Activity Timeline (10m)</div>
-        <div style={{ height: '220px' }}>
-          <Line data={lineData} options={commonOptions} />
-        </div>
-      </div>
-
-      {/* SECTION 2: DEMOGRAPHIC & RULE TARGETING */}
-      <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-light)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
-        <div className="section-title" style={{ marginBottom: '0.75rem' }}>Targeting & Demographic Intelligence</div>
-      </div>
 
       <div className="chart-card">
         <div className="chart-card-title">Targeting Rule Matches</div>
-        <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: '190px', height: '190px' }}>
-            <Doughnut data={ruleDoughnutData} options={{...noScaleOptions, cutout: '72%'}} />
+            <Doughnut data={ruleDoughnutData} options={{...doughnutOptionsWithLegend, cutout: '72%'}} />
           </div>
         </div>
+      </div>
+
+      {/* SECTION 3: DEMOGRAPHIC INTELLIGENCE */}
+      <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-light)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
+        <div className="section-title" style={{ marginBottom: '0.75rem' }}>Demographic Intelligence</div>
       </div>
 
       <div className="chart-card">
         <div className="chart-card-title">Device Type Distribution</div>
         <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ width: '190px', height: '190px' }}>
-            <Doughnut data={devDoughnutData} options={{...noScaleOptions, cutout: '72%'}} />
+            <Doughnut data={devDoughnutData} options={{...doughnutOptionsWithLegend, cutout: '72%'}} />
           </div>
         </div>
       </div>
@@ -332,7 +392,7 @@ function AnalyticsCharts({
         </div>
       </div>
 
-      <div className="chart-card">
+      <div className="chart-card" style={{ gridColumn: '1 / -1' }}>
         <div className="chart-card-title">Age Cohort Saturation</div>
         <div style={{ height: '220px' }}>
           <Bar data={ageBarData} options={ageOptions} />

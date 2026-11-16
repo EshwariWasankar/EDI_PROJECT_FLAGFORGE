@@ -1,6 +1,42 @@
 import { useState, useEffect } from 'react';
 import { X, Trash2, Shield, AlertTriangle, Plus, Save, Sliders, Info } from 'lucide-react';
 
+const countriesList = [
+  { code: 'IN', name: 'India', flag: '🇮🇳' },
+  { code: 'US', name: 'United States', flag: '🇺🇸' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+  { code: 'FR', name: 'France', flag: '🇫🇷' },
+  { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+  { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
+  { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪' }
+];
+
+const getOperatorsForAttribute = (attribute) => {
+  if (attribute === 'gender') {
+    return [
+      { value: 'EQUALS', label: 'Equals' },
+      { value: 'NOT_EQUALS', label: 'Not Equals' }
+    ];
+  }
+  if (attribute === 'location') {
+    return [
+      { value: 'EQUALS', label: 'Equals' },
+      { value: 'NOT_EQUALS', label: 'Not Equals' },
+      { value: 'IN_LIST', label: 'In List' }
+    ];
+  }
+  return [
+    { value: 'EQUALS', label: 'Equals' },
+    { value: 'NOT_EQUALS', label: 'Not Equals' },
+    { value: 'GREATER_THAN_OR_EQUAL', label: 'Greater Than or Equal' },
+    { value: 'LESS_THAN_OR_EQUAL', label: 'Less Than or Equal' },
+    { value: 'IN_LIST', label: 'In List (comma sep)' }
+  ];
+};
+
 function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -15,7 +51,7 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
   const [rules, setRules] = useState([]);
 
   useEffect(() => {
-    if (feature) {
+    if (feature && isOpen) {
       setDisplayName(feature.display_name || '');
       setDescription(feature.description || '');
       setIsActive(feature.is_active !== undefined ? !!feature.is_active : true);
@@ -92,7 +128,7 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
       }
       setRules(loadedRules);
     }
-  }, [feature]);
+  }, [feature?.flag_key, isOpen]);
 
   if (!isOpen || !feature) return null;
 
@@ -196,16 +232,43 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
     setRules(rules.map(r => {
       if (r.id === ruleId) {
         let updated = { ...r, [field]: val };
-        if (field === 'attribute' && val === 'age') {
-          updated.operator = 'BETWEEN';
-          updated.min_age = 18;
-          updated.max_age = 60;
-          updated.value = '18-60';
-        } else if (field === 'attribute' && val !== 'age') {
-          updated.operator = 'EQUALS';
-          updated.value = '';
-          delete updated.min_age;
-          delete updated.max_age;
+        if (field === 'attribute') {
+          if (val === 'age') {
+            updated.operator = 'BETWEEN';
+            updated.min_age = 18;
+            updated.max_age = 60;
+            updated.value = '18-60';
+          } else if (val === 'gender') {
+            updated.operator = 'EQUALS';
+            updated.value = 'male';
+            delete updated.min_age;
+            delete updated.max_age;
+          } else if (val === 'location') {
+            updated.operator = 'EQUALS';
+            updated.value = 'IN';
+            delete updated.min_age;
+            delete updated.max_age;
+          } else {
+            updated.operator = 'EQUALS';
+            updated.value = '';
+            delete updated.min_age;
+            delete updated.max_age;
+          }
+        } else if (field === 'operator') {
+          // If changing operator for location between single/multi, make sure the value is sensible
+          if (r.attribute === 'location') {
+            if (val === 'IN_LIST') {
+              // Convert single code to list format if not already
+              if (!updated.value || updated.value.includes(',')) {
+                updated.value = updated.value || 'IN';
+              }
+            } else {
+              // Convert list to single code (take the first one)
+              if (updated.value && updated.value.includes(',')) {
+                updated.value = updated.value.split(',')[0].trim();
+              }
+            }
+          }
         }
         return updated;
       }
@@ -227,6 +290,206 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
     { value: 'LESS_THAN_OR_EQUAL', label: 'Less Than or Equal' },
     { value: 'IN_LIST', label: 'In List (comma sep)' }
   ];
+
+  const renderConditionInputs = (rule) => {
+    // 1. Age Range Attribute
+    if (rule.attribute === 'age') {
+      const minAge = rule.min_age !== undefined ? rule.min_age : 18;
+      const maxAge = rule.max_age !== undefined ? rule.max_age : 60;
+      
+      return (
+        <div style={{ flex: '3 1 320px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Age Range</span>
+            <span style={{ fontWeight: 600, color: 'var(--accent-blue, #3B82F6)' }}>
+              {minAge} - {maxAge} years old
+            </span>
+          </label>
+          <div 
+            className="dual-range-container"
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const percent = (x / rect.width) * 100;
+              const distMin = Math.abs(percent - minAge);
+              const distMax = Math.abs(percent - maxAge);
+              
+              const minInput = e.currentTarget.querySelector('.min-range');
+              const maxInput = e.currentTarget.querySelector('.max-range');
+              if (minInput && maxInput) {
+                if (distMin < distMax) {
+                  minInput.style.zIndex = '5';
+                  maxInput.style.zIndex = '3';
+                } else {
+                  minInput.style.zIndex = '3';
+                  maxInput.style.zIndex = '5';
+                }
+              }
+            }}
+          >
+            <div className="dual-range-track"></div>
+            <div 
+              className="dual-range-progress"
+              style={{
+                left: `${minAge}%`,
+                right: `${100 - maxAge}%`
+              }}
+            ></div>
+            <input 
+              type="range"
+              min="0"
+              max="100"
+              value={minAge}
+              onChange={(e) => {
+                const minVal = parseInt(e.target.value, 10);
+                const newMin = Math.min(minVal, maxAge);
+                updateRule(rule.id, 'min_age', newMin);
+                updateRule(rule.id, 'value', `${newMin}-${maxAge}`);
+              }}
+              className="dual-range-input min-range"
+              style={{ 
+                zIndex: minAge > 50 ? 5 : 3 
+              }}
+            />
+            <input 
+              type="range"
+              min="0"
+              max="100"
+              value={maxAge}
+              onChange={(e) => {
+                const maxVal = parseInt(e.target.value, 10);
+                const newMax = Math.max(minAge, maxVal);
+                updateRule(rule.id, 'max_age', newMax);
+                updateRule(rule.id, 'value', `${minAge}-${newMax}`);
+              }}
+              className="dual-range-input max-range"
+              style={{ 
+                zIndex: minAge > 50 ? 3 : 5 
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // 2. Operators list selection based on attribute
+    const attrOperators = getOperatorsForAttribute(rule.attribute);
+
+    // 3. Render Operator Selector & Attribute-specific Values
+    return (
+      <>
+        <div style={{ flex: '1 1 140px' }}>
+          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Operator</label>
+          <select 
+            className="form-input-text" 
+            style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', width: '100%' }}
+            value={rule.operator}
+            onChange={(e) => updateRule(rule.id, 'operator', e.target.value)}
+          >
+            {attrOperators.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+
+        <div style={{ flex: '2 1 180px', display: 'flex', flexDirection: 'column' }}>
+          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Value</label>
+          {rule.attribute === 'gender' ? (
+            <select 
+              className="form-input-text" 
+              style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', width: '100%' }}
+              value={rule.value}
+              onChange={(e) => updateRule(rule.id, 'value', e.target.value)}
+            >
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="prefer not to say">Prefer not to say</option>
+            </select>
+          ) : rule.attribute === 'location' ? (
+            rule.operator === 'IN_LIST' ? (
+              <div 
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px',
+                  marginTop: '2px',
+                  padding: '6px 8px',
+                  background: 'var(--bg-surface-raised)',
+                  border: '1px solid var(--border-light)',
+                  borderRadius: 'var(--radius-sm)',
+                  minHeight: '38px',
+                  alignItems: 'center'
+                }}
+              >
+                {countriesList.map(c => {
+                  const selectedList = rule.value ? rule.value.split(',').map(s => s.trim().toUpperCase()) : [];
+                  const isSelected = selectedList.includes(c.code);
+                  return (
+                    <span 
+                      key={c.code}
+                      onClick={() => {
+                        let updated;
+                        if (isSelected) {
+                          updated = selectedList.filter(item => item !== c.code);
+                        } else {
+                          updated = [...selectedList, c.code];
+                        }
+                        // If everything is deselected, fallback to IN
+                        if (updated.length === 0) {
+                          updateRule(rule.id, 'value', 'IN');
+                        } else {
+                          updateRule(rule.id, 'value', updated.join(', '));
+                        }
+                      }}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        borderRadius: 'var(--radius-full)',
+                        cursor: 'pointer',
+                        border: '1px solid',
+                        borderColor: isSelected ? 'var(--accent-blue, #3B82F6)' : 'var(--border-medium)',
+                        backgroundColor: isSelected ? 'var(--accent-blue-bg)' : 'transparent',
+                        color: isSelected ? 'var(--accent-blue, #3B82F6)' : 'var(--text-secondary)',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <span>{c.flag}</span>
+                      <span>{c.name}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (
+              <select 
+                className="form-input-text" 
+                style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', width: '100%' }}
+                value={rule.value}
+                onChange={(e) => updateRule(rule.id, 'value', e.target.value)}
+              >
+                {countriesList.map(c => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.name} ({c.code})
+                  </option>
+                ))}
+              </select>
+            )
+          ) : (
+            <input 
+              type="text"
+              className="form-input-text"
+              style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', width: '100%' }}
+              placeholder={rule.operator === 'IN_LIST' ? "iOS, Android (comma sep)" : "value"}
+              value={rule.value}
+              onChange={(e) => updateRule(rule.id, 'value', e.target.value)}
+            />
+          )}
+        </div>
+      </>
+    );
+  };
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
@@ -359,80 +622,7 @@ function RolloutRulesModal({ isOpen, onClose, feature, onSuccess }) {
                       </select>
                     </div>
 
-                    {rule.attribute === 'age' ? (
-                      <div style={{ flex: '3 1 320px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>Age Range</span>
-                          <span style={{ fontWeight: 600, color: 'var(--accent-brand)' }}>
-                            {rule.min_age !== undefined ? rule.min_age : 18} - {rule.max_age !== undefined ? rule.max_age : 60} years old
-                          </span>
-                        </label>
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>Min:</span>
-                            <input 
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={rule.min_age !== undefined ? rule.min_age : 18}
-                              onChange={(e) => {
-                                const minVal = parseInt(e.target.value, 10);
-                                const maxVal = rule.max_age !== undefined ? rule.max_age : 60;
-                                const newMin = Math.min(minVal, maxVal);
-                                updateRule(rule.id, 'min_age', newMin);
-                                updateRule(rule.id, 'value', `${newMin}-${maxVal}`);
-                              }}
-                              className="range-slider"
-                              style={{ margin: 0, width: '100%' }}
-                            />
-                          </div>
-                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>Max:</span>
-                            <input 
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={rule.max_age !== undefined ? rule.max_age : 60}
-                              onChange={(e) => {
-                                const minVal = rule.min_age !== undefined ? rule.min_age : 18;
-                                const maxVal = parseInt(e.target.value, 10);
-                                const newMax = Math.max(minVal, maxVal);
-                                updateRule(rule.id, 'max_age', newMax);
-                                updateRule(rule.id, 'value', `${minVal}-${newMax}`);
-                              }}
-                              className="range-slider"
-                              style={{ margin: 0, width: '100%' }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ flex: '1 1 140px' }}>
-                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Operator</label>
-                          <select 
-                            className="form-input-text" 
-                            style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', width: '100%' }}
-                            value={rule.operator}
-                            onChange={(e) => updateRule(rule.id, 'operator', e.target.value)}
-                          >
-                            {commonOperators.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                          </select>
-                        </div>
-
-                        <div style={{ flex: '2 1 180px' }}>
-                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Value</label>
-                          <input 
-                            type="text"
-                            className="form-input-text"
-                            style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', width: '100%' }}
-                            placeholder={rule.operator === 'IN_LIST' ? "iOS, Android (comma sep)" : "value"}
-                            value={rule.value}
-                            onChange={(e) => updateRule(rule.id, 'value', e.target.value)}
-                          />
-                        </div>
-                      </>
-                    )}
+                    {renderConditionInputs(rule)}
                   </div>
 
                   {/* Rule Outcome (Serve value) */}

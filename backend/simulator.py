@@ -134,10 +134,11 @@ def evaluate_flag_detailed(flag_data, context):
             expected_value = rule.get('value')
             
             if evaluate_condition_v2(attribute, operator, expected_value, context):
-                if is_rolled_out():
-                    return bool(rule.get('serve_value', False)), rule_id
-                else:
+                serve_val = bool(rule.get('serve_value', False))
+                # Gate through rollout percentage: only serve to the configured % of matched users
+                if serve_val and not is_rolled_out():
                     return fallback_val, rule_id
+                return serve_val, rule_id
         else:
             # Legacy Nested conditions rules format
             conditions = rule.get('conditions', [])
@@ -153,13 +154,13 @@ def evaluate_flag_detailed(flag_data, context):
                 serve_val = rule.get('value') if 'value' in rule else True
                 if 'serve_value' in rule:
                     serve_val = rule['serve_value']
-                
-                if is_rolled_out():
-                    return bool(serve_val), rule_id
-                else:
+                serve_val = bool(serve_val)
+                # Gate through rollout percentage
+                if serve_val and not is_rolled_out():
                     return fallback_val, rule_id
+                return serve_val, rule_id
 
-    # If no rules match, fallback to global rollout percentage only if rules_json is empty
+    # If no rules defined, fallback to global rollout percentage
     if not rules:
         if is_rolled_out():
             return True, 'default'
@@ -180,15 +181,14 @@ def evaluate_flag(flag_data, context):
 def start_simulator():
     print("Starting background simulator...")
     time.sleep(2) # Give main app a moment to start
-    
-    # Generate 250 realistic-looking mock device IDs
-    sim_users = [f"device_sim_{str(i).zfill(3)}_{random.randint(1000,9999)}" for i in range(1, 251)]
+    # Generate 50 realistic-looking mock device IDs
+    sim_users = [f"device_sim_{str(i).zfill(3)}_{random.randint(1000,9999)}" for i in range(1, 51)]
     default_features = ['new_transfer_ui', 'biometric_login', 'spending_analytics']
     
     # Define user types for more realistic traffic
-    heavy_users = sim_users[:25]
-    normal_users = sim_users[25:175]
-    occasional_users = sim_users[175:225]
+    heavy_users = sim_users[:10]
+    normal_users = sim_users[10:40]
+    occasional_users = sim_users[40:50]
     
     # Register devices on startup
     try:
