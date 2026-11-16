@@ -3,9 +3,12 @@ import time
 import random
 import json
 import pymysql
-import mmh3
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+if __package__:
+    from .bucketing import bucket_for
+else:
+    from bucketing import bucket_for
 
 # Load environment variables from the .env file in the same directory as this script
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -113,6 +116,7 @@ def evaluate_flag_detailed(flag_data, context):
         rules = rules_json
 
     device_id = context.get('device_id') or context.get('user_id') or ''
+    flag_key = flag_data.get('flag_key') or flag_data.get('feature_name')
     global_rollout = flag_data.get('rollout_percentage', 0)
 
     # Helper to check if a user is within the global rollout bucket
@@ -121,9 +125,7 @@ def evaluate_flag_detailed(flag_data, context):
             return True
         if global_rollout <= 0:
             return False
-        hash_val = mmh3.hash(device_id, seed=42)
-        normalized_hash = abs(hash_val) % 100
-        return normalized_hash < global_rollout
+        return bucket_for(flag_key, device_id) < global_rollout
 
     for rule in rules:
         rule_id = rule.get('rule_id') or rule.get('id') or 'default_rule'

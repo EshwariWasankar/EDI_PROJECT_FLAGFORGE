@@ -1,11 +1,16 @@
 import os
 import json
+import threading
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pymysql
-import mmh3
 from dotenv import load_dotenv
-import threading
+
+if __package__:
+    from .bucketing import bucket_for, hash_for
+else:
+    from bucketing import bucket_for, hash_for
 
 # Load environment variables from the .env file in the same directory as this script
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -111,6 +116,7 @@ def evaluate_flag_detailed(flag_data, context):
         rules = rules_json
 
     device_id = context.get('device_id') or context.get('user_id') or ''
+    flag_key = flag_data.get('flag_key') or flag_data.get('feature_name')
     global_rollout = flag_data.get('rollout_percentage', 0)
 
     # Helper to check if a user is within the global rollout bucket
@@ -119,9 +125,7 @@ def evaluate_flag_detailed(flag_data, context):
             return True
         if global_rollout <= 0:
             return False
-        hash_val = mmh3.hash(device_id, seed=42)
-        normalized_hash = abs(hash_val) % 100
-        return normalized_hash < global_rollout
+        return bucket_for(flag_key, device_id) < global_rollout
 
     for rule in rules:
         rule_id = rule.get('rule_id') or rule.get('id') or 'default_rule'
@@ -165,7 +169,7 @@ def evaluate_flag_detailed(flag_data, context):
 
     return fallback_val, 'default'
 
-def is_feature_enabled_for_device(device_id, is_globally_enabled, rollout_percentage):
+def is_feature_enabled_for_device(device_id, flag_key, is_globally_enabled, rollout_percentage):
     if not is_globally_enabled:
         return False
     if rollout_percentage >= 100:
@@ -173,9 +177,7 @@ def is_feature_enabled_for_device(device_id, is_globally_enabled, rollout_percen
     if rollout_percentage <= 0:
         return False
     
-    hash_val = mmh3.hash(device_id, seed=42)
-    normalized_hash = abs(hash_val) % 100
-    return normalized_hash < rollout_percentage
+    return bucket_for(flag_key, device_id) < rollout_percentage
 
 @app.route('/get-features', methods=['GET'])
 def get_features():
@@ -192,7 +194,8 @@ def get_features():
             result = {}
             for flag in flags:
                 result[flag['feature_name']] = is_feature_enabled_for_device(
-                    device_id, 
+                    device_id,
+                    flag['feature_name'],
                     bool(flag['is_enabled']), 
                     flag['rollout_percentage']
                 )
@@ -560,8 +563,9 @@ def get_dashboard_data():
             intelligence = []
             for d in sample_devices:
                 for f in features:
-                    hash_val = mmh3.hash(d['device_id'], seed=42)
-                    normalized_hash = abs(hash_val) % 100
+                    flag_key = f.get('flag_key') or f['feature_name']
+                    normalized_hash = bucket_for(flag_key, d['device_id'])
+                    hash_val = hash_for(flag_key, d['device_id'])
                     
                     is_eligible = normalized_hash < int(f['rollout_percentage'])
                     if f['rollout_percentage'] >= 100:
@@ -697,9 +701,9 @@ def get_dashboard_data():
         conn.close()
 
 if __name__ == '__main__':
-    # Start the background simulator thread
-    from simulator import start_simulator
-    simulator_thread = threading.Thread(target=start_simulator, daemon=True)
-    simulator_thread.start()
+    if os.getenv("FLAGFORGE_DISABLE_SIMULATOR", "").lower() not in {"1", "true", "yes"}:
+        from simulator import start_simulator
+        simulator_thread = threading.Thread(target=start_simulator, daemon=True)
+        simulator_thread.start()
     
     app.run(host='0.0.0.0', port=5000, debug=False)

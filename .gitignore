@@ -46,3 +46,6 @@ npm-debug.log*
 # Database backups
 *.sql
 !backend/db_schema.sql
+paper
+load_test_results
+

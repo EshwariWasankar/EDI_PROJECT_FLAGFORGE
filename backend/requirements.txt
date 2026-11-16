@@ -4,3 +4,4 @@ pymysql==1.1.0
 python-dotenv==1.0.1
 mmh3==4.1.0
 cryptography==42.0.5
+aiohttp==3.12.15

@@ -7,9 +7,10 @@ FlagForge is a sophisticated, enterprise-grade feature flagging and A/B testing 
 FlagForge offers a rich set of features to manage and monitor your application's features:
 
 1.  **Deterministic Feature Toggles**:
-    *   Utilizes **MurmurHash3** for consistent and deterministic feature assignment to devices.
+    *   Utilizes **flag-salted MurmurHash3** (`flag_key:device_id`) for consistent assignments within a feature and separate bucket streams across features.
     *   Percentage-based rollout logic for gradual feature releases.
     *   Clear visualization of the MurmurHash3 process in the dashboard ("Rollout Intelligence").
+    *   Changing from the previous unsalted scheme reassigns existing rollout cohorts once; assignments are stable thereafter for each flag/device pair.
 
 2.  **Real-time Control Dashboard (React)**:
     *   **Premium UI**: Polished dark fintech/admin theme with modern design, Lucide React icons, smooth animations, and responsive layout.
@@ -202,6 +203,62 @@ If you want to get the Backend and Database running with a single command:
     *   The Flutter banking app will dynamically update its UI (e.g., new tabs, different transfer screens) based on the feature flags you set in the dashboard.
     *   Interacting with features in the Flutter app (e.g., "Transfer") will log usage events, which will appear in the dashboard's "Live Event Feed" and update metrics.
 5.  **Explore Rollout Intelligence**: Understand how MurmurHash3 deterministically assigns features to devices.
+
+## Rollout Evaluation
+
+Run the independent 5,000-entity benchmark from the repository root:
+
+```powershell
+python backend\benchmark_rollout.py
+```
+
+It generates 5,000 distinct, reproducible UUID device IDs, checks rollout
+rates at 25%, 50%, and 75%, performs a 100-bucket chi-square goodness-of-fit
+test, and measures overlap, Jaccard similarity, and Pearson correlation for
+two independently salted 25% flags. The statistical methodology and measured
+LaTeX table are in `paper\methodology.tex` and `paper\evaluation_table.tex`.
+The observed cross-flag independence is an empirical result for this sample,
+not a formal guarantee of MurmurHash3.
+
+## HTTP Load Testing
+
+Install backend dependencies, start MySQL and the Flask service, then run the
+load test from the repository root:
+
+```powershell
+python -m pip install -r backend\requirements.txt
+python backend\load_test.py
+```
+
+By default, the runner sends `POST` requests to
+`http://127.0.0.1:5000/evaluate-features`, with 5,000 distinct UUID device
+IDs (seed `20261116`), cycling the `instant_transfer`, `biometric_auth`, and
+`spending_analytics` scenario keys and regions `IN`, `US`, `GB`, and `DE`.
+The endpoint evaluates all configured flags for each request; the scenario
+key is included in request attributes as benchmark context and does not filter
+which flags the endpoint evaluates. It runs concurrency tiers 10, 25, 50, 100,
+and 200 sequentially, with a 5-second warm-up and 30-second measurement at
+each tier. Raw per-request CSV and summary CSV/JSON are written to
+`backend\load_test_results\`.
+
+For comparison with the Flask development server, run a Windows-compatible
+multi-threaded WSGI server from the `backend` directory after installing
+Waitress (`python -m pip install waitress`):
+
+```powershell
+waitress-serve --listen=0.0.0.0:5000 --threads=4 app:app
+```
+
+Waitress does not start the development-only background traffic simulator.
+For a less noisy development-server comparison, disable the simulator before
+starting Flask from the `backend` directory:
+
+```powershell
+$env:FLAGFORGE_DISABLE_SIMULATOR="1"; python app.py
+```
+
+Run only one server at a time on port 5000. Waitress's `--threads=4` configures
+four request-handling threads, not four worker processes.
 
 ## Troubleshooting
 
